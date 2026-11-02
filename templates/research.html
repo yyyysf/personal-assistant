@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}科研论文 · Private Assistant{% endblock %}
+{% block page_title %}科研论文{% endblock %}
+{% block subtitle %}arXiv cs.AI 每日推荐 · LLM 摘要 · Zotero 入库 · 文献复盘{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2>让论文从「收藏」走向「读懂」</h2>
+    <p>抓取今日 arXiv 大模型方向论文，生成摘要后一键导入 Zotero，并沉淀阅读笔记。</p>
+  </div>
+  <form
+    hx-post="/research/fetch"
+    hx-target="#research-list"
+    hx-swap="outerHTML"
+    hx-disabled-elt="find button"
+    hx-indicator="#fetch-loading">
+    <button class="btn btn-primary" type="submit">抓取今日论文</button>
+    <span id="fetch-loading" class="loading-line htmx-indicator">正在请求 arXiv 并生成摘要…</span>
+  </form>
+</section>
+
+<div class="inline-stats stat-strip">
+  <span><strong>{{ stats.total }}</strong> 论文总数</span>
+  <span><strong>{{ stats.read }}</strong> 已读</span>
+  <span><strong>{{ stats.imported }}</strong> 已入 Zotero</span>
+  <span><strong>{{ stats.notes }}</strong> 条阅读笔记</span>
+</div>
+
+<div class="split-layout">
+  <div class="split-main">
+    <div id="research-list">
+      {% include "partials/research_list.html" %}
+    </div>
+  </div>
+
+  <aside class="split-side">
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>科研闭环</h2><p class="panel-sub">推荐的最小工作流</p></div>
+      </header>
+      <ol class="step-list">
+        <li><span class="step-num">1</span><div><strong>抓取</strong><p>每日自动抓取 arXiv cs.AI，也可手动触发。</p></div></li>
+        <li><span class="step-num">2</span><div><strong>摘要</strong><p>DeepSeek 生成 2-3 句科研向摘要，未配置 Key 时保留原文摘录。</p></div></li>
+        <li><span class="step-num">3</span><div><strong>入库</strong><p>一键写入 Zotero 文库并保留 arXiv 链接。</p></div></li>
+        <li><span class="step-num">4</span><div><strong>复盘</strong><p>记录阅读笔记，周复盘会汇总已读论文。</p></div></li>
+      </ol>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>集成状态</h2><p class="panel-sub">本地配置</p></div>
+      </header>
+      <div class="status-list">
+        <div class="status-row">
+          <span>DeepSeek 摘要</span>
+          <span class="badge {{ 'badge-ok' if llm_ready else 'badge-warn' }}">{{ '可用' if llm_ready else '本地降级' }}</span>
+        </div>
+        <div class="status-row">
+          <span>Zotero 入库</span>
+          <span class="badge {{ 'badge-ok' if zotero_ready else 'badge-muted' }}">{{ '已配置' if zotero_ready else '待配置' }}</span>
+        </div>
+        <div class="status-row">
+          <span>定时抓取</span>
+          <span class="badge badge-muted">每日 08:05</span>
+        </div>
+      </div>
+      <p class="footnote">定时任务可在 .env 中通过 ARXIV_FETCH_HOUR / ARXIV_FETCH_MINUTE 调整。</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

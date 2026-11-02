@@ -1,0 +1,82 @@
+<div id="todo-board">
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <div class="kanban">
+    {% for key, label in [('todo', '待办'), ('doing', '进行中'), ('done', '已完成')] %}
+    <section class="kanban-col kanban-{{ key }}">
+      <header class="kanban-head">
+        <h3>{{ label }}</h3>
+        <span class="count">{{ groups[key]|length }}</span>
+      </header>
+      <div class="kanban-body">
+        {% for task in groups[key] %}
+        <article class="task-card priority-{{ task.priority }}">
+          <div class="task-top">
+            <span class="priority-label priority-{{ task.priority }}">{{ task.priority|priority }}</span>
+            {% if task.goal %}
+            <span class="task-goal">{{ task.goal.title }}</span>
+            {% endif %}
+          </div>
+          <h4 class="task-title">{{ task.title }}</h4>
+          {% if task.description %}
+          <p class="task-desc">{{ task.description }}</p>
+          {% endif %}
+          <div class="task-meta">
+            {% if task.due_date %}<span>截止 {{ task.due_date|dt }}</span>{% endif %}
+            {% for tag in task.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+            {% if task.completed_at %}<span class="tag tag-ok">{{ task.completed_at|dt('%m-%d %H:%M') }} 完成</span>{% endif %}
+          </div>
+          <div class="task-actions">
+            {% if task.status == 'todo' %}
+            <form hx-post="/todo/tasks/{{ task.id }}/status" hx-target="#todo-board" hx-swap="outerHTML">
+              <input type="hidden" name="status" value="doing">
+              <button class="btn btn-tiny" type="submit">开始</button>
+            </form>
+            <form hx-post="/todo/tasks/{{ task.id }}/status" hx-target="#todo-board" hx-swap="outerHTML">
+              <input type="hidden" name="status" value="done">
+              <button class="btn btn-tiny btn-primary" type="submit">完成</button>
+            </form>
+            {% elif task.status == 'doing' %}
+            <form hx-post="/todo/tasks/{{ task.id }}/status" hx-target="#todo-board" hx-swap="outerHTML">
+              <input type="hidden" name="status" value="done">
+              <button class="btn btn-tiny btn-primary" type="submit">完成</button>
+            </form>
+            <form hx-post="/todo/tasks/{{ task.id }}/status" hx-target="#todo-board" hx-swap="outerHTML">
+              <input type="hidden" name="status" value="todo">
+              <button class="btn btn-tiny" type="submit">退回</button>
+            </form>
+            {% else %}
+            <form hx-post="/todo/tasks/{{ task.id }}/status" hx-target="#todo-board" hx-swap="outerHTML">
+              <input type="hidden" name="status" value="todo">
+              <button class="btn btn-tiny" type="submit">重新打开</button>
+            </form>
+            {% endif %}
+            <form hx-post="/todo/tasks/{{ task.id }}/delete" hx-target="#todo-board" hx-swap="outerHTML" data-confirm="确定删除这条任务吗？">
+              <button class="icon-btn" type="submit" title="删除任务" aria-label="删除任务">✕</button>
+            </form>
+          </div>
+        </article>
+        {% else %}
+        <p class="column-empty">{{ '拖入一条新任务开始' if key == 'todo' else '暂无任务' }}</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <details class="archive-block">
+    <summary>历史归档 · {{ archived|length }} 项</summary>
+    <div class="archive-list">
+      {% for task in archived %}
+      <div class="list-row">
+        <span class="row-title">{{ task.title }}</span>
+        <span class="row-meta">{{ task.completed_at|dt if task.completed_at else task.created_at|dt }}</span>
+      </div>
+      {% else %}
+      <p class="empty-inline">归档区为空。完成并归档的任务会保留在这里。</p>
+      {% endfor %}
+    </div>
+  </details>
+</div>

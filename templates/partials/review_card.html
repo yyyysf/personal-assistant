@@ -1,0 +1,45 @@
+<article class="panel review-card" id="review-card">
+  <header class="panel-head">
+    <div>
+      <h2>AI 每周复盘</h2>
+      <p class="panel-sub">读取本周全部记录生成总结与行动建议</p>
+    </div>
+    {% if review %}
+    <span class="badge {{ 'badge-accent' if review.source == 'llm' else 'badge-muted' }}">
+      {{ 'LLM' if review.source == 'llm' else '本地统计' }}
+    </span>
+    {% endif %}
+  </header>
+
+  {% if error is defined and error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if review %}
+  <div class="prose">{{ review.content|md }}</div>
+  {% if review.suggestions %}
+  <div class="suggestions">
+    <h4>下周行动建议</h4>
+    <div class="prose">{{ review.suggestions|md }}</div>
+  </div>
+  {% endif %}
+  <p class="footnote">生成于 {{ review.created_at|dt('%m-%d %H:%M') }} · 第 {{ review.week_start|d('%m-%d') }} 周</p>
+  {% else %}
+  <div class="empty">
+    <p>还没有本周复盘。点击下方按钮，AI 会汇总本周任务、学习、论文与资讯记录。</p>
+    <p class="muted">未配置 DeepSeek Key 时会生成基于统计的本地复盘。</p>
+  </div>
+  {% endif %}
+
+  <form
+    hx-post="/dashboard/review"
+    hx-target="#review-card"
+    hx-swap="outerHTML"
+    hx-disabled-elt="find button"
+    hx-indicator="#review-loading">
+    <button class="btn btn-primary btn-block" type="submit">
+      {{ '重新生成复盘' if review else '生成本周复盘' }}
+    </button>
+    <span id="review-loading" class="loading-line htmx-indicator">正在读取本周记录并生成…</span>
+  </form>
+</article>

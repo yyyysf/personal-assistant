@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}前沿资讯 · Private Assistant{% endblock %}
+{% block page_title %}AI 前沿资讯{% endblock %}
+{% block subtitle %}RSS 聚合 · LLM 精简简报 · 时间线与历史检索{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2>每天 10 分钟，跟上 AI 的节奏</h2>
+    <p>聚合 arXiv、Hugging Face、Hacker News 与实验室博客，生成带原链接的每日简报。</p>
+  </div>
+  <div class="action-row">
+    <form hx-post="/news/fetch" hx-target="#news-content" hx-swap="outerHTML" hx-disabled-elt="find button" hx-indicator="#news-loading">
+      <button class="btn btn-primary" type="submit">抓取最新资讯</button>
+    </form>
+    <form hx-post="/news/digest" hx-target="#news-content" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <button class="btn btn-ghost" type="submit">生成今日简报</button>
+    </form>
+  </div>
+</section>
+<span id="news-loading" class="loading-line htmx-indicator">正在聚合 RSS 并生成简报…</span>
+
+<form class="search-bar" method="get" action="/news">
+  <input type="search" name="q" value="{{ q }}" placeholder="搜索简报标题或摘要…" aria-label="搜索资讯">
+  <input type="month" name="month" value="{{ month }}" aria-label="按月份筛选">
+  <button class="btn" type="submit">搜索</button>
+  {% if q or month %}<a class="btn btn-ghost" href="/news">清除</a>{% endif %}
+</form>
+
+<div class="split-layout">
+  <div class="split-main">
+    <div id="news-content">
+      {% include "partials/news_content.html" %}
+    </div>
+  </div>
+
+  <aside class="split-side">
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>历史简报</h2><p class="panel-sub">按日归档</p></div>
+      </header>
+      <div class="digest-history">
+        {% for digest in digests %}
+        <div class="digest-history-item">
+          <span class="badge badge-accent">{{ digest.digest_date|d('%m-%d') }}</span>
+          <div>
+            <strong>{{ digest.title }}</strong>
+            <p>{{ digest.item_count }} 条资讯</p>
+          </div>
+        </div>
+        {% else %}
+        <p class="empty-inline">还没有历史简报。</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>订阅源</h2><p class="panel-sub">可在 .env 中调整</p></div>
+      </header>
+      <ul class="check-list">
+        <li>arXiv cs.AI</li>
+        <li>Hugging Face Blog</li>
+        <li>Hacker News</li>
+        <li>AI 实验室博客（可自行追加）</li>
+      </ul>
+      <p class="footnote">每日 08:40 自动聚合；所有条目保留原文链接。</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

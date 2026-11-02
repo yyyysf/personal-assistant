@@ -1,0 +1,24 @@
+<section class="panel" id="travel-trips">
+  <header class="panel-head">
+    <div><h2>行程草稿</h2><p class="panel-sub">{{ trips|length }} 份</p></div>
+  </header>
+  <div class="stack">
+    {% for trip in trips %}
+    <article class="trip-card">
+      <div class="trip-head">
+        <h3>{{ trip.title }}</h3>
+        <span class="tag {{ 'tag-accent' if trip.status == 'draft' else 'tag-ok' }}">
+          {{ {'draft': '草稿', 'planned': '已计划', 'done': '已完成'}.get(trip.status, trip.status) }}
+        </span>
+      </div>
+      <p class="row-meta">
+        {{ trip.start_date|d if trip.start_date else '待定' }} → {{ trip.end_date|d if trip.end_date else '待定' }}
+      </p>
+      {% if trip.itinerary %}<pre class="itinerary">{{ trip.itinerary }}</pre>{% endif %}
+      {% if trip.notes %}<p class="muted">{{ trip.notes }}</p>{% endif %}
+    </article>
+    {% else %}
+    <p class="empty">还没有行程草稿。</p>
+    {% endfor %}
+  </div>
+</section>

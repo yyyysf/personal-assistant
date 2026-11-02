@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}总览看板 · Private Assistant{% endblock %}
+{% block page_title %}总览看板{% endblock %}
+{% block subtitle %}本周节奏、科研与学习进度尽在一屏{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">MY PRIVATE ASSISTANT</p>
+    <h2>今天，把重要的事推进一点。</h2>
+    <p class="hero-sub">
+      任务、论文、学习与旅行记录都在本地统一沉淀，AI 负责把记录变成下一步行动。
+    </p>
+  </div>
+  <div class="hero-badges">
+    <span class="badge {{ 'badge-ok' if llm_ready else 'badge-warn' }}">
+      {{ 'DeepSeek 已连接' if llm_ready else 'LLM 本地降级' }}
+    </span>
+    <span class="badge">MCP {{ system.mcp.mode }}</span>
+    <span class="badge {{ 'badge-ok' if system.scheduler.running else 'badge-muted' }}">
+      {{ '定时任务运行中' if system.scheduler.running else '定时任务未运行' }}
+    </span>
+  </div>
+</section>
+
+<section class="stat-grid">
+  <article class="stat-card">
+    <div class="stat-icon">％</div>
+    <div class="stat-body">
+      <span class="stat-label">本周任务执行率</span>
+      <strong class="stat-value">{{ stats.completion_rate }}<small>%</small></strong>
+      <span class="stat-sub">{{ completion.done }} / {{ completion.total }} 项本周任务</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon">✓</div>
+    <div class="stat-body">
+      <span class="stat-label">累计已完成</span>
+      <strong class="stat-value">{{ stats.done_total }}<small>项</small></strong>
+      <span class="stat-sub">历史归档 {{ todo.stats.archived }} 项</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon">☀</div>
+    <div class="stat-body">
+      <span class="stat-label">今日完成</span>
+      <strong class="stat-value">{{ stats.today_done }}<small>项</small></strong>
+      <span class="stat-sub">每完成一项都计入连续记录</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon">⌁</div>
+    <div class="stat-body">
+      <span class="stat-label">连续记录</span>
+      <strong class="stat-value">{{ stats.streak }}<small>天</small></strong>
+      <span class="stat-sub">保持节奏比追求强度更重要</span>
+    </div>
+  </article>
+</section>
+
+<div class="dashboard-grid">
+  <div class="dash-main">
+    <section class="panel tab-panel" x-data="{ tab: 'overview' }">
+      <header class="panel-head">
+        <div>
+          <h2>分区工作台</h2>
+          <p class="panel-sub">按板块切换，聚焦当前最重要的一条线</p>
+        </div>
+        <span class="panel-hint">数据实时汇总</span>
+      </header>
+
+      <nav class="segmented tabs-scroll" role="tablist" aria-label="板块切换">
+        <button type="button" :class="{ active: tab === 'overview' }" @click="tab = 'overview'">总览</button>
+        <button type="button" :class="{ active: tab === 'research' }" @click="tab = 'research'">科研</button>
+        <button type="button" :class="{ active: tab === 'video' }" @click="tab = 'video'">AI 视频学习</button>
+        <button type="button" :class="{ active: tab === 'music' }" @click="tab = 'music'">AI 音乐学习</button>
+        <button type="button" :class="{ active: tab === 'reading' }" @click="tab = 'reading'">书单阅读</button>
+        <button type="button" :class="{ active: tab === 'travel' }" @click="tab = 'travel'">旅游规划</button>
+        <button type="button" :class="{ active: tab === 'todo' }" @click="tab = 'todo'">Todo 目标管理</button>
+      </nav>
+
+      <div class="tab-body" x-show="tab === 'overview'" x-cloak>
+        <div class="focus-grid">
+          <div class="mini-card">
+            <div class="mini-head"><h3>今日待办</h3><a href="/todo">看板 →</a></div>
+            <ul class="plain-list">
+              {% for task in focus.tasks %}
+              <li class="list-row">
+                <span class="priority-dot priority-{{ task.priority }}"></span>
+                <span class="row-title">{{ task.title }}</span>
+                <span class="row-meta">{{ task.due_date|dt('%H:%M') if task.due_date else '随时' }}</span>
+              </li>
+              {% else %}
+              <li class="empty-inline">今天没有未完成待办，保持从容。</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div class="mini-card">
+            <div class="mini-head"><h3>今日新论文</h3><a href="/research">科研 →</a></div>
+            <ul class="plain-list">
+              {% for paper in focus.papers %}
+              <li class="list-row">
+                <span class="row-title"><a href="{{ paper.url }}" target="_blank" rel="noopener">{{ paper.title }}</a></span>
+              </li>
+              {% else %}
+              <li class="empty-inline">今天还没有新论文，点击科研板块抓取。</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div class="mini-card">
+            <div class="mini-head"><h3>今日学习</h3><a href="/learning/video">学习 →</a></div>
+            <ul class="plain-list">
+              {% for item in focus.video.today_items %}
+              <li class="list-row">
+                <span class="tag tag-video">视频</span>
+                <span class="row-title">{{ item.title }}</span>
+              </li>
+              {% endfor %}
+              {% for item in focus.music.today_items %}
+              <li class="list-row">
+                <span class="tag tag-music">音乐</span>
+                <span class="row-title">{{ item.title }}</span>
+              </li>
+              {% endfor %}
+              {% if not focus.video.today_items and not focus.music.today_items %}
+              <li class="empty-inline">今日学习任务已清空或尚未生成。</li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+
+        <div class="heatmap-block">
+          <div class="mini-head">
+            <h3>月度行动热力 · {{ month_label }}</h3>
+            <span class="legend"><i class="cell level-0"></i><i class="cell level-1"></i><i class="cell level-2"></i><i class="cell level-3"></i></span>
+          </div>
+          <div class="heatmap">
+            {% for name in ['一', '二', '三', '四', '五', '六', '日'] %}
+            <span class="heat-weekday">{{ name }}</span>
+            {% endfor %}
+            {% for cell in heatmap %}
+            <span
+              class="heat-cell level-{{ 3 if cell.count >= 3 else (2 if cell.count == 2 else (1 if cell.count == 1 else 0)) }}{% if not cell.in_month %} out-month{% endif %}{% if cell.is_today %} is-today{% endif %}"
+              title="{{ cell.date }} · {{ cell.count }} 项完成">
+              {{ cell.day }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-body" x-show="tab === 'research'" x-cloak>
+        <div class="inline-stats">
+          <span><strong>{{ research.stats.today }}</strong> 今日新增</span>
+          <span><strong>{{ research.stats.read }}</strong> 已读</span>
+          <span><strong>{{ research.stats.imported }}</strong> 已入 Zotero</span>
+        </div>
+        <div class="stack">
+          {% for paper in research.papers[:4] %}
+          <article class="list-card">
+            <div class="list-card-head">
+              <h3><a href="{{ paper.url }}" target="_blank" rel="noopener">{{ paper.title }}</a></h3>
+              <span class="badge {{ 'badge-ok' if paper.read_status == 'read' else 'badge-muted' }}">
+                {{ '已读' if paper.read_status == 'read' else '未读' }}
+              </span>
+            </div>
+            <p class="clamp-2">{{ paper.summary or paper.abstract }}</p>
+          </article>
+          {% else %}
+          <p class="empty">暂无论文，前往科研板块抓取今日 arXiv cs.AI。</p>
+          {% endfor %}
+        </div>
+        <a class="btn btn-ghost" href="/research">进入科研板块</a>
+      </div>
+
+      {% for key, summary in [('video', video), ('music', music)] %}
+      <div class="tab-body" x-show="tab === '{{ key }}'" x-cloak>
+        <div class="learning-head">
+          <div>
+            <h3>{{ summary.label }}</h3>
+            <p class="muted">{{ summary.done_count }} / {{ summary.total_count }} 项任务完成 · 平均掌握度 {{ summary.progress }}%</p>
+          </div>
+          <div class="progress-inline">
+            <span style="width: {{ summary.progress }}%"></span>
+          </div>
+        </div>
+        <div class="stack">
+          {% for item in summary.today_items or summary.open_items %}
+          <div class="list-row list-row-loose">
+            <span class="tag tag-{{ key }}">{{ '今日' if item.scheduled_date == today else '待学' }}</span>
+            <span class="row-title">{{ item.title }}</span>
+            <span class="row-meta">掌握 {{ item.mastery }}%</span>
+          </div>
+          {% else %}
+          <p class="empty">还没有学习任务，去生成今日路线。</p>
+          {% endfor %}
+        </div>
+        <a class="btn btn-ghost" href="/learning/{{ key }}">进入学习仪表盘</a>
+      </div>
+      {% endfor %}
+
+      <div class="tab-body" x-show="tab === 'reading'" x-cloak>
+        <div class="inline-stats">
+          <span><strong>{{ reading.stats.total }}</strong> 本总数</span>
+          <span><strong>{{ reading.stats.reading }}</strong> 在读</span>
+          <span><strong>{{ reading.stats.finished }}</strong> 已读</span>
+          <span><strong>{{ reading.stats.want }}</strong> 想读</span>
+        </div>
+        <div class="stack">
+          {% for book in reading.books %}
+          <div class="list-row list-row-loose">
+            <span class="tag {{ 'tag-ok' if book.status == 'finished' else ('tag-accent' if book.status == 'reading' else '') }}">
+              {{ {'reading': '在读', 'want': '想读', 'finished': '已读'}[book.status] }}
+            </span>
+            <span class="row-title">《{{ book.title }}》<span class="muted">{{ book.author }}</span></span>
+          </div>
+          {% else %}
+          <p class="empty">书单还是空的，上传小红书收藏 JSON 自动抽取书单。</p>
+          {% endfor %}
+        </div>
+        <a class="btn btn-ghost" href="/reading">进入书单阅读</a>
+      </div>
+
+      <div class="tab-body" x-show="tab === 'travel'" x-cloak>
+        <div class="inline-stats">
+          <span><strong>{{ travel.stats.visited }}</strong> / {{ travel.stats.places }} 个足迹</span>
+          <span><strong>{{ travel.stats.trips }}</strong> 份行程草稿</span>
+        </div>
+        <div class="chip-row">
+          {% for place in travel.places %}
+          <span class="chip">{{ '✓' if place.visited else '☆' }} {{ place.name }} <em>{{ place.city }}</em></span>
+          {% else %}
+          <p class="empty">还没有地点记录。</p>
+          {% endfor %}
+        </div>
+        <div class="stack">
+          {% for trip in travel.trips %}
+          <div class="list-row list-row-loose">
+            <span class="tag tag-accent">{{ {'draft': '草稿', 'planned': '已计划', 'done': '已完成'}.get(trip.status, trip.status) }}</span>
+            <span class="row-title">{{ trip.title }}</span>
+            <span class="row-meta">{{ trip.start_date|d if trip.start_date else '待定' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <a class="btn btn-ghost" href="/travel">打开地图与行程</a>
+      </div>
+
+      <div class="tab-body" x-show="tab === 'todo'" x-cloak>
+        <div class="inline-stats">
+          <span><strong>{{ todo.stats.open }}</strong> 待推进</span>
+          <span><strong>{{ todo.stats.done_total }}</strong> 已完成</span>
+          <span><strong>{{ todo.stats.goals|length }}</strong> 个目标</span>
+        </div>
+        <div class="stack">
+          {% for task in todo.today %}
+          <div class="list-row list-row-loose">
+            <span class="priority-dot priority-{{ task.priority }}"></span>
+            <span class="row-title">{{ task.title }}</span>
+            <span class="row-meta">{{ task.due_date|dt if task.due_date else '未设定截止' }}</span>
+          </div>
+          {% else %}
+          <p class="empty">今日待办已清空。</p>
+          {% endfor %}
+        </div>
+        <div class="goal-bars">
+          {% for goal in todo.stats.goals %}
+          <div class="goal-bar">
+            <div class="goal-bar-head"><span>{{ goal.title }}</span><strong>{{ goal.progress }}%</strong></div>
+            <div class="progress"><span style="width: {{ goal.progress }}%"></span></div>
+          </div>
+          {% endfor %}
+        </div>
+        <a class="btn btn-ghost" href="/todo">进入 Todo 看板</a>
+      </div>
+    </section>
+  </div>
+
+  <aside class="dash-side">
+    {% include "partials/review_card.html" %}
+
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>板块进度</h2><p class="panel-sub">完成度与掌握度</p></div>
+      </header>
+      <div class="ring-list">
+        {% for ring in rings %}
+        <div class="ring-item">
+          <div class="ring ring-{{ ring.key }}" style="--p: {{ ring.value }}">
+            <span>{{ ring.value }}%</span>
+          </div>
+          <div class="ring-info">
+            <strong>{{ ring.label }}</strong>
+            <span>{{ ring.detail }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>系统状态</h2><p class="panel-sub">本地服务与集成</p></div>
+      </header>
+      <div class="status-list">
+        <div class="status-row">
+          <span>DeepSeek V4-Flash</span>
+          <span class="badge {{ 'badge-ok' if system.llm else 'badge-warn' }}">{{ '已连接' if system.llm else '未配置 Key' }}</span>
+        </div>
+        <div class="status-row">
+          <span>Zotero</span>
+          <span class="badge {{ 'badge-ok' if system.zotero else 'badge-muted' }}">{{ '已配置' if system.zotero else '未配置' }}</span>
+        </div>
+        <div class="status-row">
+          <span>MCP Host（{{ system.mcp.mode }}）</span>
+          <span class="badge {{ 'badge-ok' if system.mcp.running else 'badge-muted' }}">{{ system.mcp.enabled }} 启用 / {{ system.mcp.running }} 运行</span>
+        </div>
+        <div class="status-row">
+          <span>定时任务</span>
+          <span class="badge {{ 'badge-ok' if system.scheduler.running else 'badge-muted' }}">
+            {{ system.scheduler.jobs|length }} 个任务{{ '运行中' if system.scheduler.running else '未运行' }}
+          </span>
+        </div>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

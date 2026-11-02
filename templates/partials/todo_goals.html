@@ -1,0 +1,53 @@
+<section class="panel goals-panel" id="todo-goals">
+  <header class="panel-head">
+    <div><h2>目标拆解</h2><p class="panel-sub">大目标用小进度推进</p></div>
+    <span class="badge">{{ goals|length }} 个</span>
+  </header>
+
+  <div class="stack">
+    {% for goal in goals %}
+    <article class="goal-card">
+      <div class="goal-top">
+        <h3>{{ goal.title }}</h3>
+        <strong>{{ goal.progress }}%</strong>
+      </div>
+      {% if goal.description %}<p class="muted">{{ goal.description }}</p>{% endif %}
+      <div class="progress"><span style="width: {{ goal.progress }}%"></span></div>
+      <div class="goal-meta">
+        <span>{{ ('截止 ' ~ goal.target_date|d) if goal.target_date else '长期目标' }}</span>
+        <span>{{ goal.tasks|length }} 个任务</span>
+      </div>
+      <form
+        class="range-form"
+        hx-post="/todo/goals/{{ goal.id }}/progress"
+        hx-target="#todo-goals"
+        hx-swap="outerHTML"
+        hx-trigger="change">
+        <input type="range" name="progress" min="0" max="100" step="5" value="{{ goal.progress }}" aria-label="目标进度">
+      </form>
+    </article>
+    {% else %}
+    <p class="empty">还没有目标，先写下本阶段最重要的一件事。</p>
+    {% endfor %}
+  </div>
+
+  <form
+    class="stack-form"
+    hx-post="/todo/goals"
+    hx-target="#todo-goals"
+    hx-swap="outerHTML">
+    <label class="field">
+      <span>新增目标</span>
+      <input type="text" name="title" maxlength="200" required placeholder="例如：完成 AI 音乐学习路线">
+    </label>
+    <label class="field">
+      <span>目标说明（可选）</span>
+      <input type="text" name="description" placeholder="一句话说明成功的样子">
+    </label>
+    <label class="field">
+      <span>目标日期（可选）</span>
+      <input type="date" name="target_date">
+    </label>
+    <button class="btn btn-ghost" type="submit">创建目标</button>
+  </form>
+</section>

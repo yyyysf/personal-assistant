@@ -1,0 +1,13 @@
+<div id="research-list" class="stack">
+  {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  {% for paper in papers %}
+    {% include "partials/paper_card.html" %}
+  {% else %}
+  <div class="panel empty-panel">
+    <p>还没有论文记录。点击「抓取今日论文」从 arXiv cs.AI 获取最新大模型方向论文。</p>
+    <p class="muted">首次抓取需要网络连接，生成摘要可能耗时几十秒。</p>
+  </div>
+  {% endfor %}
+</div>

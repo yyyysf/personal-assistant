@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}My Private Assistant{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%230071e3'/><stop offset='1' stop-color='%235e5ce6'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(%23g)'/><circle cx='50' cy='50' r='20' fill='white' fill-opacity='.92'/></svg>">
+  <link rel="stylesheet" href="/static/css/apple.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  {% block styles %}{% endblock %}
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/">
+        <span class="brand-mark"></span>
+        <span class="brand-text">
+          <strong>Private Assistant</strong>
+          <small>个人智能工作台</small>
+        </span>
+      </a>
+      <nav class="nav" aria-label="主导航">
+        {% for item in nav_items %}
+        <a href="{{ item.href }}" class="nav-link{% if active == item.key %} active{% endif %}">
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+        {% endfor %}
+      </nav>
+      <div class="sidebar-foot">
+        <div class="status-pill">
+          <span class="dot {% if llm_ready %}dot-ok{% else %}dot-warn{% endif %}"></span>
+          {{ 'DeepSeek 已连接' if llm_ready else '本地降级模式' }}
+        </div>
+        <a class="side-link" href="/docs" target="_blank" rel="noopener">API 文档 ↗</a>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1>{% block page_title %}总览看板{% endblock %}</h1>
+          <p>{% block subtitle %}本周节奏、科研与学习进度尽在一屏{% endblock %}</p>
+        </div>
+        <div class="topbar-meta">
+          <span class="date-chip">{{ today.strftime('%Y 年 %m 月 %d 日') }}</span>
+        </div>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="footer">
+        本地运行 · 数据仅存本机 SQLite · {{ current_year }}
+      </footer>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/js/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

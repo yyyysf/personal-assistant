@@ -1,0 +1,86 @@
+<div id="reading-content" class="stack">
+  {% if result %}
+  <div class="alert alert-success">{{ result.message }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>我的书单</h2><p class="panel-sub">按阅读状态自动排序</p></div>
+      <div class="inline-stats compact-stats">
+        <span><strong>{{ stats.reading }}</strong> 在读</span>
+        <span><strong>{{ stats.want }}</strong> 想读</span>
+        <span><strong>{{ stats.finished }}</strong> 已读</span>
+      </div>
+    </header>
+
+    <div class="book-list">
+      {% for book in books %}
+      <article class="book-item">
+        {% if book.source_note and book.source_note.cover_url %}
+        <img class="book-cover" src="{{ book.source_note.cover_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+        {% else %}
+        <div class="book-cover book-cover-fallback">《{{ book.title[:1] }}》</div>
+        {% endif %}
+        <div class="book-main">
+          <div class="book-head">
+            <h3>《{{ book.title }}》</h3>
+            <span class="tag {{ 'tag-ok' if book.status == 'finished' else ('tag-accent' if book.status == 'reading' else '') }}">
+              {{ {'reading': '在读', 'want': '想读', 'finished': '已读'}[book.status] }}
+            </span>
+          </div>
+          <p class="book-meta">
+            {% if book.author %}{{ book.author }} · {% endif %}
+            {{ book.recommended_by or '手动添加' }}
+            {% if book.rating %} · 评分 {{ '★' * book.rating }}{% endif %}
+          </p>
+          {% if book.notes %}<p class="book-notes">{{ book.notes }}</p>{% endif %}
+          <div class="book-actions">
+            <form hx-post="/reading/books/{{ book.id }}/status" hx-target="#reading-content" hx-swap="outerHTML">
+              <select name="status" aria-label="更新阅读状态" onchange="this.form.requestSubmit()">
+                <option value="want" {{ 'selected' if book.status == 'want' }}>想读</option>
+                <option value="reading" {{ 'selected' if book.status == 'reading' }}>在读</option>
+                <option value="finished" {{ 'selected' if book.status == 'finished' }}>已读</option>
+              </select>
+            </form>
+            {% if book.source_note and book.source_note.url %}
+            <a class="btn btn-tiny btn-ghost" href="{{ book.source_note.url }}" target="_blank" rel="noopener">原笔记 ↗</a>
+            {% endif %}
+            {% if book.resource_url %}
+            <a class="btn btn-tiny btn-ghost" href="{{ book.resource_url }}" target="_blank" rel="noopener">资源 ↗</a>
+            {% endif %}
+            <form hx-post="/reading/books/{{ book.id }}/delete" hx-target="#reading-content" hx-swap="outerHTML" data-confirm="确定从书单移除这本书吗？">
+              <button class="icon-btn" type="submit" title="移除" aria-label="移除书籍">✕</button>
+            </form>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <p class="empty">书单为空。上传小红书收藏 JSON，或手动添加一本书。</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>收藏笔记</h2><p class="panel-sub">最近解析的 {{ notes|length }} 条</p></div>
+    </header>
+    <div class="note-grid">
+      {% for note in notes %}
+      <article class="note-card">
+        <h3>
+          {% if note.url %}<a href="{{ note.url }}" target="_blank" rel="noopener">{{ note.title }}</a>
+          {% else %}{{ note.title }}{% endif %}
+        </h3>
+        <p class="note-meta">{{ note.author or '未知作者' }} · {{ note.created_at|dt }}</p>
+        {% if note.summary %}<p class="clamp-3">{{ note.summary }}</p>{% endif %}
+        <span class="tag">{{ note.books|length }} 本书</span>
+      </article>
+      {% else %}
+      <p class="empty-inline">还没有导入收藏笔记。</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>

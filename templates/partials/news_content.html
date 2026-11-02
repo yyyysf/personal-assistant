@@ -1,0 +1,38 @@
+<div id="news-content" class="stack">
+  {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  {% if latest_digest %}
+  <section class="panel digest-card">
+    <header class="panel-head">
+      <div>
+        <h2>{{ latest_digest.title }}</h2>
+        <p class="panel-sub">{{ latest_digest.item_count }} 条资讯 · 生成于 {{ latest_digest.created_at|dt }}</p>
+      </div>
+      <span class="badge badge-accent">AI 简报</span>
+    </header>
+    <div class="prose">{{ latest_digest.content|md }}</div>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>资讯时间线</h2><p class="panel-sub">当前筛选 {{ total }} 条</p></div>
+    </header>
+
+    {% for group in timeline %}
+    <div class="timeline-group">
+      <h3 class="timeline-date">{{ group.date|d('%Y 年 %m 月 %d 日') }}</h3>
+      <div class="timeline-items">
+        {% for item in group.entries %}
+        {% include "partials/news_item.html" %}
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-panel">
+      <p>没有匹配的资讯。点击「抓取最新资讯」聚合订阅源，或调整搜索条件。</p>
+    </div>
+    {% endfor %}
+  </section>
+</div>

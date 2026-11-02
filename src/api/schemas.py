@@ -1,0 +1,124 @@
+"""API 请求体模型。"""
+
+from datetime import date, datetime
+
+from pydantic import BaseModel, Field, field_validator
+
+PRIORITIES = {"high", "medium", "low"}
+TASK_STATUSES = {"todo", "doing", "done"}
+BOOK_STATUSES = {"want", "reading", "finished"}
+CATEGORIES = {"video", "music"}
+
+
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = ""
+    priority: str = "medium"
+    tags: str = ""
+    status: str = "todo"
+    due_date: datetime | None = None
+    goal_id: int | None = None
+
+    @field_validator("priority")
+    @classmethod
+    def check_priority(cls, value: str) -> str:
+        if value not in PRIORITIES:
+            raise ValueError("priority 只能是 high / medium / low")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, value: str) -> str:
+        if value not in TASK_STATUSES:
+            raise ValueError("status 只能是 todo / doing / done")
+        return value
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    priority: str | None = None
+    tags: str | None = None
+    status: str | None = None
+    due_date: datetime | None = None
+    archived: bool | None = None
+    goal_id: int | None = None
+
+
+class GoalCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = ""
+    progress: int = Field(default=0, ge=0, le=100)
+    target_date: date | None = None
+
+
+class PaperNoteCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=5000)
+
+
+class BookCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    author: str = ""
+    status: str = "want"
+    rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str = ""
+    resource_url: str = ""
+    recommended_by: str = ""
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, value: str) -> str:
+        if value not in BOOK_STATUSES:
+            raise ValueError("status 只能是 want / reading / finished")
+        return value
+
+
+class BookUpdate(BaseModel):
+    status: str | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+    notes: str | None = None
+    resource_url: str | None = None
+
+
+class LearningItemCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    description: str = ""
+    resource_url: str = ""
+    scheduled_date: date | None = None
+
+
+class LearningItemUpdate(BaseModel):
+    status: str | None = None
+    mastery: int | None = Field(default=None, ge=0, le=100)
+
+
+class LearningLogCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=3000)
+    mastery: int = Field(default=0, ge=0, le=100)
+
+
+class PlaceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    country: str = ""
+    city: str = ""
+    lat: float = Field(default=0.0, ge=-90, le=90)
+    lng: float = Field(default=0.0, ge=-180, le=180)
+    visited: bool = False
+    visit_date: date | None = None
+    notes: str = ""
+
+
+class PlaceUpdate(BaseModel):
+    name: str | None = None
+    notes: str | None = None
+    visited: bool | None = None
+    visit_date: date | None = None
+
+
+class TripCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    start_date: date | None = None
+    end_date: date | None = None
+    status: str = "draft"
+    itinerary: str = ""
+    notes: str = ""

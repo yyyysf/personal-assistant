@@ -1,0 +1,79 @@
+<div id="learning-content" class="stack">
+  {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>今日学习任务</h2><p class="panel-sub">15–40 分钟可完成的小步任务</p></div>
+      <span class="badge badge-accent">{{ today_items|length }} 项</span>
+    </header>
+    <div class="stack">
+      {% for item in today_items %}
+      <article class="learning-item">
+        <div class="learning-item-head">
+          <div>
+            <h3>
+              {% if item.resource_url %}<a href="{{ item.resource_url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+              {% else %}{{ item.title }}{% endif %}
+            </h3>
+            {% if item.description %}<p class="muted">{{ item.description }}</p>{% endif %}
+          </div>
+          <form hx-post="/learning/{{ category }}/items/{{ item.id }}/complete" hx-target="#learning-content" hx-swap="outerHTML">
+            <button class="btn btn-tiny btn-primary" type="submit">完成</button>
+          </form>
+        </div>
+        <div class="mastery-row">
+          <div class="progress"><span style="width: {{ item.mastery }}%"></span></div>
+          <span class="row-meta">掌握 {{ item.mastery }}%</span>
+        </div>
+        <form
+          class="mastery-form"
+          hx-post="/learning/{{ category }}/items/{{ item.id }}/mastery"
+          hx-target="#learning-content"
+          hx-swap="outerHTML">
+          <input type="range" name="mastery" min="0" max="100" step="10" value="{{ item.mastery }}" aria-label="掌握程度">
+          <button class="btn btn-tiny" type="submit">记录掌握度</button>
+        </form>
+      </article>
+      {% else %}
+      <p class="empty">今天还没有学习任务。点击上方「生成今日学习任务」，让 AI 根据记忆拆解路线。</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>路线待学</h2><p class="panel-sub">后续安排与未排期任务</p></div>
+      <span class="badge">{{ upcoming_items|length }} 项</span>
+    </header>
+    <ul class="plain-list">
+      {% for item in upcoming_items %}
+      <li class="list-row list-row-loose">
+        <span class="tag">{{ item.scheduled_date|d('%m-%d') if item.scheduled_date else '未排期' }}</span>
+        <span class="row-title">
+          {% if item.resource_url %}<a href="{{ item.resource_url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+          {% else %}{{ item.title }}{% endif %}
+        </span>
+        <span class="row-meta">掌握 {{ item.mastery }}%</span>
+      </li>
+      {% else %}
+      <li class="empty-inline">没有待学任务，路线已清空。</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <details class="panel done-panel">
+    <summary>已完成记录 · {{ done_items|length }} 项</summary>
+    <ul class="plain-list">
+      {% for item in done_items %}
+      <li class="list-row">
+        <span class="tag tag-ok">完成</span>
+        <span class="row-title">{{ item.title }}</span>
+        <span class="row-meta">{{ item.completed_at|dt if item.completed_at else '—' }}</span>
+      </li>
+      {% else %}
+      <li class="empty-inline">还没有完成记录。</li>
+      {% endfor %}
+    </ul>
+  </details>
+</div>

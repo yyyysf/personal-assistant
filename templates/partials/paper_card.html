@@ -1,0 +1,61 @@
+<article class="panel paper-card" id="paper-{{ paper.id }}">
+  <div class="paper-head">
+    <div class="paper-head-main">
+      <p class="paper-meta-line">
+        <span>{{ paper.arxiv_id }}</span>
+        <span>{{ paper.published_at|d }}</span>
+        {% if paper.fetched_at %}<span>抓取 {{ paper.fetched_at|dt }}</span>{% endif %}
+      </p>
+      <h3><a href="{{ paper.url }}" target="_blank" rel="noopener">{{ paper.title }}</a></h3>
+      {% if paper.authors %}<p class="authors">{{ paper.authors }}</p>{% endif %}
+    </div>
+    <span class="badge {{ 'badge-ok' if paper.read_status == 'read' else 'badge-muted' }}">
+      {{ '已读' if paper.read_status == 'read' else '未读' }}
+    </span>
+  </div>
+
+  {% if card_notice is defined and card_notice %}
+  <div class="alert alert-success">{{ card_notice }}</div>
+  {% endif %}
+  {% if card_error is defined and card_error %}
+  <div class="alert alert-error">{{ card_error }}</div>
+  {% endif %}
+
+  {% if paper.summary %}
+  <div class="summary-box">
+    <h4>AI 摘要</h4>
+    <p>{{ paper.summary }}</p>
+  </div>
+  {% endif %}
+
+  <details class="abstract-block">
+    <summary>查看原文摘要</summary>
+    <p>{{ paper.abstract }}</p>
+  </details>
+
+  <div class="tag-row">
+    {% for tag in paper.tags.split(',') if tag.strip() %}
+    <span class="tag">{{ tag.strip() }}</span>
+    {% endfor %}
+  </div>
+
+  <div class="paper-actions">
+    <form hx-post="/research/papers/{{ paper.id }}/summarize" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <button class="btn btn-tiny" type="submit">生成 / 更新摘要</button>
+    </form>
+    <form hx-post="/research/papers/{{ paper.id }}/read" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML">
+      <button class="btn btn-tiny" type="submit">{{ '标记未读' if paper.read_status == 'read' else '标记已读' }}</button>
+    </form>
+    <form hx-post="/research/papers/{{ paper.id }}/zotero" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <button class="btn btn-tiny btn-primary" type="submit" {{ 'disabled' if paper.imported_to_zotero else '' }}>
+        {{ '已入 Zotero' if paper.imported_to_zotero else '导入 Zotero' }}
+      </button>
+    </form>
+    <a class="btn btn-tiny btn-ghost" href="{{ paper.url }}" target="_blank" rel="noopener">原文 ↗</a>
+  </div>
+
+  <details class="notes-block">
+    <summary>阅读笔记 · {{ paper.notes|length }} 条</summary>
+    {% include "partials/paper_notes.html" %}
+  </details>
+</article>

@@ -1,0 +1,14 @@
+<article class="news-item" id="news-item-{{ item.id }}">
+  <div class="news-item-head">
+    <span class="badge">{{ item.source }}</span>
+    <span class="row-meta">{{ (item.published_at or item.fetched_at)|dt }}</span>
+  </div>
+  <h4><a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.title }}</a></h4>
+  {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+  <div class="news-actions">
+    <a class="btn btn-tiny btn-ghost" href="{{ item.link }}" target="_blank" rel="noopener">阅读原文 ↗</a>
+    <form hx-post="/news/items/{{ item.id }}/summarize" hx-target="#news-item-{{ item.id }}" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <button class="btn btn-tiny" type="submit">LLM 精简</button>
+    </form>
+  </div>
+</article>

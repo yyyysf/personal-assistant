@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}旅游规划 · Private Assistant{% endblock %}
+{% block page_title %}旅游规划{% endblock %}
+{% block subtitle %}交互式地图 · 足迹打点 · 行程草稿 · 旅行档案{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2>把去过的地方与想去的地方，钉在地图上</h2>
+    <p>点击地图任意位置自动填入坐标，记录游记、照片备注与行程草稿。</p>
+  </div>
+  <div class="inline-stats compact-stats">
+    <span><strong>{{ visited_count }}</strong> / {{ places|length }} 个足迹</span>
+    <span><strong>{{ trips|length }}</strong> 份行程</span>
+  </div>
+</section>
+
+<section class="panel map-panel">
+  <div id="travel-map" class="travel-map" aria-label="旅行地图"></div>
+  <p class="map-hint">点击地图可把坐标填入左侧表单 · 地图瓦片来自 OpenStreetMap</p>
+</section>
+
+<script type="application/json" id="places-data">{{ markers|tojson }}</script>
+
+<div class="split-layout travel-layout">
+  <div class="split-main">
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>新增地点</h2><p class="panel-sub">在地图上点选，或手动填写经纬度</p></div>
+      </header>
+      <form id="place-form" class="form-grid" hx-post="/travel/places" hx-target="#travel-places" hx-swap="outerHTML">
+        <label class="field span-2">
+          <span>地点名称</span>
+          <input type="text" name="name" maxlength="200" required placeholder="例如：清水寺">
+        </label>
+        <label class="field">
+          <span>城市</span>
+          <input type="text" name="city" placeholder="京都">
+        </label>
+        <label class="field">
+          <span>国家 / 地区</span>
+          <input type="text" name="country" placeholder="日本">
+        </label>
+        <label class="field">
+          <span>纬度</span>
+          <input type="number" name="lat" step="any" min="-90" max="90" required placeholder="34.9949">
+        </label>
+        <label class="field">
+          <span>经度</span>
+          <input type="number" name="lng" step="any" min="-180" max="180" required placeholder="135.7850">
+        </label>
+        <label class="field">
+          <span>到访日期</span>
+          <input type="date" name="visit_date">
+        </label>
+        <label class="field checkbox-field">
+          <input type="checkbox" name="visited" value="1">
+          <span>已经去过</span>
+        </label>
+        <label class="field span-2">
+          <span>备注（游记、照片说明）</span>
+          <textarea name="notes" rows="2" placeholder="最佳时间、路线提示、想再去的理由…"></textarea>
+        </label>
+        <div class="form-actions span-2">
+          <button class="btn btn-primary" type="submit">保存地点</button>
+        </div>
+      </form>
+    </section>
+
+    <div id="travel-places">
+      {% include "partials/travel_places.html" %}
+    </div>
+  </div>
+
+  <aside class="split-side">
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>新建行程草稿</h2><p class="panel-sub">先记下来，再慢慢完善</p></div>
+      </header>
+      <form class="stack-form" hx-post="/travel/trips" hx-target="#travel-trips" hx-swap="outerHTML">
+        <label class="field">
+          <span>行程标题</span>
+          <input type="text" name="title" maxlength="200" required placeholder="例如：京都赏樱 4 日">
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>开始</span>
+            <input type="date" name="start_date">
+          </label>
+          <label class="field">
+            <span>结束</span>
+            <input type="date" name="end_date">
+          </label>
+        </div>
+        <label class="field">
+          <span>行程安排</span>
+          <textarea name="itinerary" rows="4" placeholder="D1 抵达…&#10;D2 …"></textarea>
+        </label>
+        <label class="field">
+          <span>备注</span>
+          <input type="text" name="notes" placeholder="预算、交通、住宿">
+        </label>
+        <button class="btn btn-ghost" type="submit">保存行程</button>
+      </form>
+    </section>
+
+    <div id="travel-trips">
+      {% include "partials/travel_trips.html" %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var mapEl = document.getElementById('travel-map');
+  if (!mapEl || !window.L) return;
+
+  var dataEl = document.getElementById('places-data');
+  var places = [];
+  try { places = JSON.parse(dataEl ? dataEl.textContent : '[]'); } catch (e) { places = []; }
+
+  var map = L.map('travel-map', { scrollWheelZoom: true }).setView([30, 110], 3);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var escapeHtml = function (value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  };
+
+  var markerMap = {};
+  function addPlace(place) {
+    if (!place || !place.lat || !place.lng) return;
+    if (markerMap[place.id]) { markerMap[place.id].remove(); }
+    var color = place.visited ? '#34c759' : '#0071e3';
+    var marker = L.circleMarker([place.lat, place.lng], {
+      radius: 8, color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 0.95
+    }).addTo(map);
+    var popup = '<strong>' + escapeHtml(place.name) + '</strong><br>' +
+      escapeHtml([place.city, place.country].filter(Boolean).join(' · ')) +
+      (place.visited ? '<br><span style="color:#34c759">✓ 已到访</span>' : '<br><span style="color:#0071e3">☆ 想去</span>') +
+      (place.notes ? '<br>' + escapeHtml(place.notes) : '');
+    marker.bindPopup(popup);
+    markerMap[place.id] = marker;
+  }
+  places.forEach(addPlace);
+
+  map.on('click', function (event) {
+    var form = document.getElementById('place-form');
+    if (!form) return;
+    form.querySelector('input[name="lat"]').value = event.latlng.lat.toFixed(6);
+    form.querySelector('input[name="lng"]').value = event.latlng.lng.toFixed(6);
+    if (window.showToast) window.showToast('已填入坐标，继续填写地点名称即可保存');
+  });
+
+  document.body.addEventListener('placeAdded', function (event) {
+    addPlace(event.detail);
+    var form = document.getElementById('place-form');
+    if (form) form.reset();
+    if (window.showToast) window.showToast('地点已添加并标记到地图');
+  });
+});
+</script>
+{% endblock %}

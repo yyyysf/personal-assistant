@@ -1,0 +1,42 @@
+{
+  "servers": {
+    "zotero": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["zotero-mcp-server"],
+      "env": {},
+      "enabled": false,
+      "description": "Zotero 文库读写：论文入库、读取笔记与注释"
+    },
+    "feed": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["feed-mcp"],
+      "env": {},
+      "enabled": false,
+      "description": "RSS 订阅聚合（备用通道，主流程使用 APScheduler）"
+    },
+    "osm": {
+      "transport": "sse",
+      "url": "http://127.0.0.1:8765/sse",
+      "enabled": false,
+      "description": "OSM 地图服务：地名转坐标、景点检索、路线规划"
+    },
+    "memory": {
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-memory"],
+      "env": {},
+      "enabled": false,
+      "description": "学习路线持久记忆（当前由 SQLite learning_logs 承担）"
+    },
+    "xiaohongshu": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "src.mcp_servers.xiaohongshu"],
+      "env": {},
+      "enabled": false,
+      "description": "【后期可选】小红书收藏增量同步，仅自用、限流、每日最多一次"
+    }
+  }
+}

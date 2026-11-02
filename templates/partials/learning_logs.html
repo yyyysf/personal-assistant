@@ -1,0 +1,28 @@
+<section class="panel" id="learning-logs">
+  <header class="panel-head">
+    <div><h2>学习记忆</h2><p class="panel-sub">LLM 下次生成的依据</p></div>
+  </header>
+
+  <div class="log-list">
+    {% for log in logs %}
+    <div class="log-item">
+      <p>{{ log.content }}</p>
+      <span class="note-meta">{{ log.source }} · 掌握度 {{ log.mastery }}% · {{ log.created_at|dt }}</span>
+    </div>
+    {% else %}
+    <p class="empty-inline">还没有学习记忆。记录一条心得，AI 会据此调整下一步路线。</p>
+    {% endfor %}
+  </div>
+
+  <form class="stack-form" hx-post="/learning/{{ category }}/logs" hx-target="#learning-logs" hx-swap="outerHTML">
+    <label class="field">
+      <span>记录今天的理解或卡点</span>
+      <textarea name="content" rows="3" required placeholder="例如：已经理解扩散过程，但注意力张量形状还需再推导一遍。"></textarea>
+    </label>
+    <label class="field">
+      <span>当前掌握度</span>
+      <input type="number" name="mastery" min="0" max="100" step="5" value="{{ track.progress }}">
+    </label>
+    <button class="btn btn-ghost" type="submit">保存学习记忆</button>
+  </form>
+</section>

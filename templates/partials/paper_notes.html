@@ -1,0 +1,19 @@
+<div id="paper-notes-{{ paper.id }}" class="notes-inner">
+  {% for note in paper.notes %}
+  <div class="note-item">
+    <p>{{ note.content }}</p>
+    <span class="note-meta">{{ note.source }} · {{ note.created_at|dt }}</span>
+  </div>
+  {% else %}
+  <p class="empty-inline">还没有笔记。记下这篇论文与你当前研究的关系。</p>
+  {% endfor %}
+
+  <form
+    class="stack-form compact"
+    hx-post="/research/papers/{{ paper.id }}/notes"
+    hx-target="#paper-notes-{{ paper.id }}"
+    hx-swap="outerHTML">
+    <textarea name="content" rows="2" required placeholder="例如：方法可迁移到我的检索增强实验，对比指标是 Recall@10。"></textarea>
+    <button class="btn btn-tiny btn-ghost" type="submit">保存笔记</button>
+  </form>
+</div>

@@ -1,0 +1,39 @@
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 数据库与备份
+*.db
+*.sqlite
+*.sqlite3
+data/*
+backups/
+!data/.gitkeep
+
+# 用户上传与 Cookies
+uploads/
+cookies/
+*cookie*
+*xhs_export*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 日志
+*.log
+logs/
+
+# 编辑器 / 系统 / 本地 AI 工具设置
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db

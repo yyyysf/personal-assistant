@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}书单阅读 · Private Assistant{% endblock %}
+{% block page_title %}书单阅读{% endblock %}
+{% block subtitle %}小红书收藏解析 · 书单管理 · 电子书资源整理{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2>从收藏夹里，打捞出真正想读的书</h2>
+    <p>上传油猴脚本导出的小红书收藏 JSON，自动解析笔记并抽取博主推荐书单。</p>
+  </div>
+  <a class="btn btn-ghost" href="/reading/export" download>导出书单 TXT</a>
+</section>
+
+<section class="panel upload-panel">
+  <div class="upload-copy">
+    <h3>导入小红书收藏</h3>
+    <p>
+      第一版采用半自动方案：无需登录、不抓取 Cookie。使用油猴脚本导出收藏 JSON 后上传即可。
+      自动 Cookie 爬虫标记为后期可选扩展，默认不启用。
+    </p>
+  </div>
+  <form
+    class="upload-form"
+    hx-post="/reading/upload"
+    hx-target="#reading-content"
+    hx-swap="outerHTML"
+    hx-encoding="multipart/form-data"
+    hx-disabled-elt="find button"
+    hx-indicator="#upload-loading">
+    <input type="file" name="file" accept=".json,application/json" required aria-label="选择小红书收藏 JSON 文件">
+    <button class="btn btn-primary" type="submit">解析并导入</button>
+    <span id="upload-loading" class="loading-line htmx-indicator">正在解析笔记并抽取书单…</span>
+  </form>
+</section>
+
+<div class="split-layout">
+  <div class="split-main">
+    <div id="reading-content">
+      {% include "partials/reading_content.html" %}
+    </div>
+  </div>
+
+  <aside class="split-side">
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>手动添加书籍</h2><p class="panel-sub">不经过小红书也能维护书单</p></div>
+      </header>
+      <form class="stack-form" hx-post="/reading/books" hx-target="#reading-content" hx-swap="outerHTML">
+        <label class="field">
+          <span>书名</span>
+          <input type="text" name="title" maxlength="300" required placeholder="例如：构建第二大脑">
+        </label>
+        <label class="field">
+          <span>作者</span>
+          <input type="text" name="author" maxlength="200" placeholder="可选">
+        </label>
+        <label class="field">
+          <span>状态</span>
+          <select name="status">
+            <option value="want" selected>想读</option>
+            <option value="reading">在读</option>
+            <option value="finished">已读</option>
+          </select>
+        </label>
+        <button class="btn btn-ghost" type="submit">加入书单</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <div><h2>版权与范围</h2></div>
+      </header>
+      <ul class="check-list">
+        <li>仅用于个人阅读整理与检索。</li>
+        <li>不实现批量下载、分发电子书。</li>
+        <li>libgen / Gutenberg MCP 作为后续可选检索入口。</li>
+        <li>书籍数据只保存在本地 SQLite。</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
