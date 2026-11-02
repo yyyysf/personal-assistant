@@ -7,6 +7,7 @@
   <title>{% block title %}My Private Assistant{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%230071e3'/><stop offset='1' stop-color='%235e5ce6'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(%23g)'/><circle cx='50' cy='50' r='20' fill='white' fill-opacity='.92'/></svg>">
   <link rel="stylesheet" href="/static/css/apple.css">
+  <link rel="stylesheet" href="/static/css/components.css">
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
   {% block styles %}{% endblock %}
@@ -22,11 +23,31 @@
         </span>
       </a>
       <nav class="nav" aria-label="主导航">
-        {% for item in nav_items %}
-        <a href="{{ item.href }}" class="nav-link{% if active == item.key %} active{% endif %}">
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
+        {% for group in nav_groups %}
+        {% if group.children %}
+        {% set child_keys = group.children|map(attribute='key')|list %}
+        <div class="nav-group" x-data="{open: {{ 'true' if active in child_keys else 'false' }}}">
+          <button type="button" class="nav-link nav-parent{% if active in child_keys %} active{% endif %}"
+                  @click="open = !open">
+            <span class="nav-icon">{{ group.icon }}</span>
+            <span>{{ group.label }}</span>
+            <span class="nav-caret" :class="open ? 'is-open' : ''">⌄</span>
+          </button>
+          <div class="nav-children" x-show="open" x-cloak>
+            {% for child in group.children %}
+            <a href="{{ child.href }}" class="nav-link nav-child{% if active == child.key %} active{% endif %}">
+              <span class="nav-icon">{{ child.icon }}</span>
+              <span>{{ child.label }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <a href="{{ group.href }}" class="nav-link{% if active == group.key %} active{% endif %}">
+          <span class="nav-icon">{{ group.icon }}</span>
+          <span>{{ group.label }}</span>
         </a>
+        {% endif %}
         {% endfor %}
       </nav>
       <div class="sidebar-foot">
@@ -60,7 +81,9 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  {% include "components/modal.html" %}
   <script src="/static/js/app.js" defer></script>
+  <script src="/static/js/components.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -16,9 +16,9 @@ from src.llm.assistant import (
     generate_daily_digest,
     suggest_tags,
     summarize_news,
-    summarize_paper,
+    summarize_paper_bilingual,
 )
-from src.models import NewsDigest, NewsItem, Paper
+from src.models import FeedSource, NewsDigest, NewsItem, Paper
 
 logger = get_logger(__name__)
 
@@ -86,8 +86,9 @@ def fetch_arxiv(db: Session, max_results: int | None = None) -> dict:
         ]
         published = _parse_dt(entry.get("published_parsed"))
         link = str(entry.get("link", raw_id))
+        title_zh = ""
         if llm_budget > 0:
-            summary = summarize_paper(title, abstract, authors)
+            title_zh, summary = summarize_paper_bilingual(title, abstract, authors)
             tags = suggest_tags(title, abstract)
             llm_budget -= 1
         else:
@@ -98,6 +99,7 @@ def fetch_arxiv(db: Session, max_results: int | None = None) -> dict:
             Paper(
                 arxiv_id=arxiv_id,
                 title=title,
+                title_zh=title_zh,
                 authors=authors,
                 abstract=abstract,
                 summary=summary,
@@ -121,6 +123,16 @@ def fetch_arxiv(db: Session, max_results: int | None = None) -> dict:
     }
 
 
+def _comment_url(entry: Any) -> str:
+    direct = entry.get("comments") or entry.get("comment_url")
+    if direct:
+        return str(direct)
+    for link in entry.get("links", []) or []:
+        if link.get("rel") in {"replies", "reply"}:
+            return str(link.get("href", ""))
+    return ""
+
+
 def _feed_items(feed: Any, source: str) -> list[dict]:
     items = []
     for entry in feed.entries[:MAX_RSS_PER_FEED]:
@@ -134,6 +146,7 @@ def _feed_items(feed: Any, source: str) -> list[dict]:
                 "source": source,
                 "title": title[:500],
                 "link": link[:800],
+                "comment_url": _comment_url(entry)[:800],
                 "raw_summary": _clean(content)[:1500],
                 "published_at": _parse_dt(entry.get("published_parsed")),
             }
@@ -141,10 +154,15 @@ def _feed_items(feed: Any, source: str) -> list[dict]:
     return items
 
 
+def _feed_urls(db: Session) -> list[str]:
+    db_urls = db.scalars(select(FeedSource.url).where(FeedSource.enabled.is_(True))).all()
+    return list(dict.fromkeys([*settings.rss_feed_list, *db_urls]))
+
+
 def fetch_rss(db: Session) -> dict:
-    feeds = settings.rss_feed_list
+    feeds = _feed_urls(db)
     if not feeds:
-        return {"ok": False, "message": "未配置 RSS_FEEDS", "created": 0}
+        return {"ok": False, "message": "未配置 RSS 订阅源", "created": 0}
 
     existing_links = set(db.scalars(select(NewsItem.link)).all())
     created = 0
@@ -171,6 +189,7 @@ def fetch_rss(db: Session) -> dict:
                         title=item["title"],
                         link=item["link"],
                         summary=summary,
+                        comment_url=item["comment_url"],
                         published_at=item["published_at"],
                         fetched_at=datetime.now(),
                         digest_date=today(),
@@ -210,7 +229,12 @@ def build_daily_digest(db: Session) -> str:
     if not items:
         return ""
     payload = [
-        {"source": item.source, "title": item.title, "summary": item.summary} for item in items
+        {
+            "source": item.source,
+            "title": item.display_title,
+            "summary": item.display_summary,
+        }
+        for item in items
     ]
     content = generate_daily_digest(payload)
     title = f"{today().month} 月 {today().day} 日 AI 前沿简报"

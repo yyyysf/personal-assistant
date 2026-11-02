@@ -1,0 +1,79 @@
+{% from "components/tag_picker.html" import tag_picker %}
+{% set is_edit = book is not none %}
+<form class="stack-form"
+      hx-post="{{ '/reading/books/' ~ book.id ~ '/edit' if is_edit else '/reading/books/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <div class="field-row">
+    <label class="field">
+      <span>书名</span>
+      <input type="text" name="title" maxlength="300" required
+             value="{{ book.title if is_edit else '' }}"
+             placeholder="例如：构建第二大脑">
+    </label>
+    <label class="field">
+      <span>作者</span>
+      <input type="text" name="author" maxlength="200"
+             value="{{ book.author if is_edit else '' }}" placeholder="可选">
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span>阅读状态</span>
+      <select name="status">
+        {% for value, label in [('want', '想读'), ('reading', '在读'), ('finished', '已读')] %}
+        <option value="{{ value }}" {{ 'selected' if is_edit and book.status == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>分类</span>
+      <select name="category">
+        <option value="">不分类</option>
+        {% for name in categories %}
+        <option value="{{ name }}" {{ 'selected' if is_edit and book.category == name }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>评分</span>
+      <select name="rating">
+        <option value="">未评分</option>
+        {% for number in range(1, 6) %}
+        <option value="{{ number }}" {{ 'selected' if is_edit and book.rating == number }}>{{ '★' * number }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <div class="field">
+    <span>标签</span>
+    {{ tag_picker('tags', book.tags if is_edit else '', tag_options) }}
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span>资源链接</span>
+      <input type="url" name="resource_url" maxlength="600"
+             value="{{ book.resource_url if is_edit else '' }}" placeholder="https://…">
+    </label>
+    <label class="field">
+      <span>推荐来源</span>
+      <input type="text" name="recommended_by" maxlength="200"
+             value="{{ book.recommended_by if is_edit else '手动添加' }}">
+    </label>
+  </div>
+
+  <label class="field">
+    <span>读书笔记 / 推荐理由</span>
+    <textarea name="notes" rows="4"
+              placeholder="记录推荐理由、关键洞见或想读的原因">{{ book.notes if is_edit else '' }}</textarea>
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '加入书单' }}</button>
+  </div>
+</form>

@@ -122,3 +122,24 @@ class TripCreate(BaseModel):
     status: str = "draft"
     itinerary: str = ""
     notes: str = ""
+
+
+class CategoryCreate(BaseModel):
+    scope: str = Field(min_length=1, max_length=30)
+    name: str = Field(min_length=1, max_length=60)
+
+
+class CategoryUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class FeedSourceCreate(BaseModel):
+    name: str = Field(default="", max_length=120)
+    url: str = Field(min_length=1, max_length=800)
+    enabled: bool = True
+
+
+class FeedSourceUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    url: str | None = Field(default=None, max_length=800)
+    enabled: bool | None = None

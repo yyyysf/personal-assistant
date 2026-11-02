@@ -1,70 +1,111 @@
 {% extends "base.html" %}
 {% block title %}前沿资讯 · Private Assistant{% endblock %}
 {% block page_title %}AI 前沿资讯{% endblock %}
-{% block subtitle %}RSS 聚合 · LLM 精简简报 · 时间线与历史检索{% endblock %}
+{% block subtitle %}RSS 聚合 · 中文摘要 · 时间线与历史简报{% endblock %}
 
 {% block content %}
 <section class="page-actions">
   <div class="page-actions-copy">
     <h2>每天 10 分钟，跟上 AI 的节奏</h2>
-    <p>聚合 arXiv、Hugging Face、Hacker News 与实验室博客，生成带原链接的每日简报。</p>
+    <p>聚合 arXiv、Hugging Face、Hacker News 与实验室博客，生成带原链接的中文简报。</p>
   </div>
   <div class="action-row">
-    <form hx-post="/news/fetch" hx-target="#news-content" hx-swap="outerHTML" hx-disabled-elt="find button" hx-indicator="#news-loading">
+    <form hx-post="/news/fetch" hx-target="#news-content" hx-swap="outerHTML"
+          hx-disabled-elt="find button" hx-indicator="#news-loading">
+      <input type="hidden" name="source" value="{{ filters.source }}">
+      <input type="hidden" name="favorite" value="{{ filters.favorite }}">
+      <input type="hidden" name="date_from" value="{{ filters.date_from }}">
+      <input type="hidden" name="date_to" value="{{ filters.date_to }}">
+      <input type="hidden" name="q" value="{{ filters.q }}">
       <button class="btn btn-primary" type="submit">抓取最新资讯</button>
     </form>
-    <form hx-post="/news/digest" hx-target="#news-content" hx-swap="outerHTML" hx-disabled-elt="find button">
+    <form hx-post="/news/digest" hx-target="#news-content" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+      <input type="hidden" name="source" value="{{ filters.source }}">
+      <input type="hidden" name="favorite" value="{{ filters.favorite }}">
+      <input type="hidden" name="date_from" value="{{ filters.date_from }}">
+      <input type="hidden" name="date_to" value="{{ filters.date_to }}">
+      <input type="hidden" name="q" value="{{ filters.q }}">
       <button class="btn btn-ghost" type="submit">生成今日简报</button>
     </form>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/news/sources" data-modal-title="订阅源设置">订阅源设置</button>
   </div>
 </section>
 <span id="news-loading" class="loading-line htmx-indicator">正在聚合 RSS 并生成简报…</span>
 
-<form class="search-bar" method="get" action="/news">
-  <input type="search" name="q" value="{{ q }}" placeholder="搜索简报标题或摘要…" aria-label="搜索资讯">
-  <input type="month" name="month" value="{{ month }}" aria-label="按月份筛选">
-  <button class="btn" type="submit">搜索</button>
-  {% if q or month %}<a class="btn btn-ghost" href="/news">清除</a>{% endif %}
+<div class="inline-stats stat-strip">
+  <span><strong>{{ stats.total }}</strong> 资讯总数</span>
+  <span><strong>{{ stats.favorite }}</strong> 已收藏</span>
+  <span><strong>{{ stats.sources }}</strong> 个来源</span>
+  <span><strong>{{ stats.digests }}</strong> 份简报</span>
+</div>
+
+<form class="filter-bar" hx-get="/news/content" hx-target="#news-content"
+      hx-swap="outerHTML" hx-trigger="change, submit">
+  <label class="field">
+    <span>来源</span>
+    <select name="source">
+      <option value="">全部来源</option>
+      {% for name in sources %}
+      <option value="{{ name }}" {{ 'selected' if filters.source == name }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="check-line">
+    <input type="checkbox" name="favorite" value="1" {{ 'checked' if filters.favorite }}>
+    只看收藏
+  </label>
+  <label class="field">
+    <span>起始日期</span>
+    <input type="date" name="date_from" value="{{ filters.date_from }}">
+  </label>
+  <label class="field">
+    <span>结束日期</span>
+    <input type="date" name="date_to" value="{{ filters.date_to }}">
+  </label>
+  <label class="field filter-search">
+    <span>关键词</span>
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="搜索标题、摘要或来源">
+  </label>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">筛选</button>
+    <a class="btn btn-ghost" href="/news">重置</a>
+  </div>
 </form>
 
 <div class="split-layout">
   <div class="split-main">
-    <div id="news-content">
-      {% include "partials/news_content.html" %}
-    </div>
+    {% include "partials/news_content.html" %}
   </div>
 
   <aside class="split-side">
     <section class="panel">
       <header class="panel-head">
-        <div><h2>历史简报</h2><p class="panel-sub">按日归档</p></div>
+        <div><h2>资讯工作流</h2><p class="panel-sub">从抓取到中文简报</p></div>
       </header>
-      <div class="digest-history">
-        {% for digest in digests %}
-        <div class="digest-history-item">
-          <span class="badge badge-accent">{{ digest.digest_date|d('%m-%d') }}</span>
-          <div>
-            <strong>{{ digest.title }}</strong>
-            <p>{{ digest.item_count }} 条资讯</p>
-          </div>
-        </div>
-        {% else %}
-        <p class="empty-inline">还没有历史简报。</p>
-        {% endfor %}
-      </div>
+      <ol class="step-list">
+        <li><span class="step-num">1</span><div><strong>聚合</strong><p>抓取 RSS 订阅源，自动去重并保留原文链接。</p></div></li>
+        <li><span class="step-num">2</span><div><strong>中文</strong><p>打开详情时按需翻译标题与摘要并缓存。</p></div></li>
+        <li><span class="step-num">3</span><div><strong>简报</strong><p>每天生成一份中文 AI 前沿简报。</p></div></li>
+        <li><span class="step-num">4</span><div><strong>归档</strong><p>在历史简报中回看任意一天的要点。</p></div></li>
+      </ol>
     </section>
 
     <section class="panel">
       <header class="panel-head">
-        <div><h2>订阅源</h2><p class="panel-sub">可在 .env 中调整</p></div>
+        <div><h2>订阅源</h2><p class="panel-sub">{{ feed_sources|length }} 个数据库订阅源</p></div>
+        <button class="btn btn-tiny btn-ghost" type="button"
+                data-modal-url="/news/sources" data-modal-title="订阅源设置">管理</button>
       </header>
       <ul class="check-list">
-        <li>arXiv cs.AI</li>
-        <li>Hugging Face Blog</li>
-        <li>Hacker News</li>
-        <li>AI 实验室博客（可自行追加）</li>
+        {% for source in feed_sources %}
+        <li>{{ source.name or source.url }} <span class="badge {{ 'badge-ok' if source.enabled else 'badge-muted' }}">{{ '启用' if source.enabled else '停用' }}</span></li>
+        {% else %}
+        <li>还没有数据库订阅源，可点击「管理」添加。</li>
+        {% endfor %}
       </ul>
-      <p class="footnote">每日 08:40 自动聚合；所有条目保留原文链接。</p>
+      <p class="footnote">抓取时会与 .env 中的订阅源合并去重；每日 08:40 自动聚合。</p>
     </section>
   </aside>
 </div>

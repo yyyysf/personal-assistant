@@ -1,0 +1,44 @@
+{% set is_edit = item is not none %}
+<form class="stack-form"
+      hx-post="{{ '/learning/' ~ category ~ '/items/' ~ item.id ~ '/edit' if is_edit else '/learning/' ~ category ~ '/items/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>任务标题</span>
+    <input type="text" name="title" maxlength="300" required
+           value="{{ item.title if is_edit else '' }}"
+           placeholder="例如：完成 MusicGen 官方 Colab 最小示例">
+  </label>
+
+  <label class="field">
+    <span>任务说明</span>
+    <textarea name="description" rows="3"
+              placeholder="完成标准、关键步骤或验收方式">{{ item.description if is_edit else '' }}</textarea>
+  </label>
+
+  <div class="field">
+    <span>学习资料链接（可添加多个）</span>
+    <div class="url-list" x-data='urlList({{ (item.resource_url_list if is_edit else [])|tojson }})'>
+      <template x-for="(url, index) in urls" :key="index">
+        <div class="url-row">
+          <input class="input" type="url" name="resource_urls" x-model="urls[index]"
+                 maxlength="600" placeholder="https://…">
+          <button class="btn btn-tiny btn-ghost" type="button" @click="remove(index)">移除</button>
+        </div>
+      </template>
+      <button class="btn btn-tiny btn-ghost" type="button" @click="add()">+ 添加链接</button>
+    </div>
+  </div>
+
+  <label class="field">
+    <span>计划日期</span>
+    <input type="date" name="scheduled_date"
+           value="{{ item.scheduled_date.isoformat() if is_edit and item.scheduled_date else '' }}">
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '加入路线' }}</button>
+  </div>
+</form>

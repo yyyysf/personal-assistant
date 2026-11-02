@@ -11,164 +11,203 @@
 <section class="page-actions">
   <div class="page-actions-copy">
     <h2>把去过的地方与想去的地方，钉在地图上</h2>
-    <p>点击地图任意位置自动填入坐标，记录游记、照片备注与行程草稿。</p>
+    <p>点击地图空白处可直接新增足迹，点击标记查看详情；照片、游记与行程草稿都保存在本地。</p>
   </div>
-  <div class="inline-stats compact-stats">
-    <span><strong>{{ visited_count }}</strong> / {{ places|length }} 个足迹</span>
-    <span><strong>{{ trips|length }}</strong> 份行程</span>
+  <div class="action-row">
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/travel/trips/new" data-modal-title="新增行程">+ 新增行程</button>
+    <button class="btn btn-primary" type="button"
+            data-modal-url="/travel/places/new" data-modal-title="新增足迹">+ 新增足迹</button>
   </div>
 </section>
 
+<div class="inline-stats stat-strip">
+  <span><strong>{{ stats.total_places }}</strong> 个足迹</span>
+  <span><strong>{{ stats.visited }}</strong> 已到访</span>
+  <span><strong>{{ stats.trips }}</strong> 份行程</span>
+</div>
+
+<div class="view-tabs">
+  <a href="/travel?tab=visited" class="{{ 'is-active' if tab != 'draft' }}">足迹记录 · {{ stats.total_places }}</a>
+  <a href="/travel?tab=draft" class="{{ 'is-active' if tab == 'draft' }}">行程草稿 · {{ stats.trips }}</a>
+</div>
+
+{% set current_categories = trip_categories if tab == 'draft' else categories %}
+{% set current_tags = trip_tag_options if tab == 'draft' else tag_options %}
+<form class="filter-bar" hx-get="/travel/content" hx-target="#travel-content"
+      hx-swap="outerHTML" hx-trigger="change, submit">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <label class="field">
+    <span>分类</span>
+    <select name="category">
+      <option value="">全部分类</option>
+      {% for name in current_categories %}
+      <option value="{{ name }}" {{ 'selected' if filters.category == name }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="field">
+    <span>标签</span>
+    <select name="tag">
+      <option value="">全部标签</option>
+      {% for name in current_tags %}
+      <option value="{{ name }}" {{ 'selected' if filters.tag == name }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="field filter-search">
+    <span>关键词</span>
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="搜索地点、城市、游记或行程">
+  </label>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">筛选</button>
+    <a class="btn btn-ghost" href="/travel?tab={{ tab }}">重置</a>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/categories/{{ 'trip' if tab == 'draft' else 'place' }}/manage"
+            data-modal-title="{{ '行程分类管理' if tab == 'draft' else '足迹分类管理' }}">分类管理</button>
+  </div>
+</form>
+
 <section class="panel map-panel">
-  <div id="travel-map" class="travel-map" aria-label="旅行地图"></div>
-  <p class="map-hint">点击地图可把坐标填入左侧表单 · 地图瓦片来自 OpenStreetMap</p>
+  <div class="map-shell">
+    <div id="travel-map" class="travel-map" aria-label="旅行地图"></div>
+    <div id="map-fallback" class="map-fallback" hidden></div>
+  </div>
+  <p class="map-hint">点击地图空白处新增足迹 · 圆点颜色代表分类，圆点越大评分越高 · 地图瓦片来自 OpenStreetMap</p>
 </section>
 
 <script type="application/json" id="places-data">{{ markers|tojson }}</script>
 
-<div class="split-layout travel-layout">
-  <div class="split-main">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>新增地点</h2><p class="panel-sub">在地图上点选，或手动填写经纬度</p></div>
-      </header>
-      <form id="place-form" class="form-grid" hx-post="/travel/places" hx-target="#travel-places" hx-swap="outerHTML">
-        <label class="field span-2">
-          <span>地点名称</span>
-          <input type="text" name="name" maxlength="200" required placeholder="例如：清水寺">
-        </label>
-        <label class="field">
-          <span>城市</span>
-          <input type="text" name="city" placeholder="京都">
-        </label>
-        <label class="field">
-          <span>国家 / 地区</span>
-          <input type="text" name="country" placeholder="日本">
-        </label>
-        <label class="field">
-          <span>纬度</span>
-          <input type="number" name="lat" step="any" min="-90" max="90" required placeholder="34.9949">
-        </label>
-        <label class="field">
-          <span>经度</span>
-          <input type="number" name="lng" step="any" min="-180" max="180" required placeholder="135.7850">
-        </label>
-        <label class="field">
-          <span>到访日期</span>
-          <input type="date" name="visit_date">
-        </label>
-        <label class="field checkbox-field">
-          <input type="checkbox" name="visited" value="1">
-          <span>已经去过</span>
-        </label>
-        <label class="field span-2">
-          <span>备注（游记、照片说明）</span>
-          <textarea name="notes" rows="2" placeholder="最佳时间、路线提示、想再去的理由…"></textarea>
-        </label>
-        <div class="form-actions span-2">
-          <button class="btn btn-primary" type="submit">保存地点</button>
-        </div>
-      </form>
-    </section>
-
-    <div id="travel-places">
-      {% include "partials/travel_places.html" %}
-    </div>
-  </div>
-
-  <aside class="split-side">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>新建行程草稿</h2><p class="panel-sub">先记下来，再慢慢完善</p></div>
-      </header>
-      <form class="stack-form" hx-post="/travel/trips" hx-target="#travel-trips" hx-swap="outerHTML">
-        <label class="field">
-          <span>行程标题</span>
-          <input type="text" name="title" maxlength="200" required placeholder="例如：京都赏樱 4 日">
-        </label>
-        <div class="field-row">
-          <label class="field">
-            <span>开始</span>
-            <input type="date" name="start_date">
-          </label>
-          <label class="field">
-            <span>结束</span>
-            <input type="date" name="end_date">
-          </label>
-        </div>
-        <label class="field">
-          <span>行程安排</span>
-          <textarea name="itinerary" rows="4" placeholder="D1 抵达…&#10;D2 …"></textarea>
-        </label>
-        <label class="field">
-          <span>备注</span>
-          <input type="text" name="notes" placeholder="预算、交通、住宿">
-        </label>
-        <button class="btn btn-ghost" type="submit">保存行程</button>
-      </form>
-    </section>
-
-    <div id="travel-trips">
-      {% include "partials/travel_trips.html" %}
-    </div>
-  </aside>
-</div>
+{% include "partials/travel_content.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  var mapEl = document.getElementById('travel-map');
-  if (!mapEl || !window.L) return;
+(function () {
+  'use strict';
 
-  var dataEl = document.getElementById('places-data');
-  var places = [];
-  try { places = JSON.parse(dataEl ? dataEl.textContent : '[]'); } catch (e) { places = []; }
+  function showFallback(message) {
+    var fallback = document.getElementById('map-fallback');
+    var mapEl = document.getElementById('travel-map');
+    if (fallback) {
+      fallback.textContent = message;
+      fallback.hidden = false;
+    }
+    if (mapEl) mapEl.classList.add('is-unavailable');
+  }
 
-  var map = L.map('travel-map', { scrollWheelZoom: true }).setView([30, 110], 3);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  var escapeHtml = function (value) {
+  function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
     });
-  };
-
-  var markerMap = {};
-  function addPlace(place) {
-    if (!place || !place.lat || !place.lng) return;
-    if (markerMap[place.id]) { markerMap[place.id].remove(); }
-    var color = place.visited ? '#34c759' : '#0071e3';
-    var marker = L.circleMarker([place.lat, place.lng], {
-      radius: 8, color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 0.95
-    }).addTo(map);
-    var popup = '<strong>' + escapeHtml(place.name) + '</strong><br>' +
-      escapeHtml([place.city, place.country].filter(Boolean).join(' · ')) +
-      (place.visited ? '<br><span style="color:#34c759">✓ 已到访</span>' : '<br><span style="color:#0071e3">☆ 想去</span>') +
-      (place.notes ? '<br>' + escapeHtml(place.notes) : '');
-    marker.bindPopup(popup);
-    markerMap[place.id] = marker;
   }
-  places.forEach(addPlace);
 
-  map.on('click', function (event) {
-    var form = document.getElementById('place-form');
-    if (!form) return;
-    form.querySelector('input[name="lat"]').value = event.latlng.lat.toFixed(6);
-    form.querySelector('input[name="lng"]').value = event.latlng.lng.toFixed(6);
-    if (window.showToast) window.showToast('已填入坐标，继续填写地点名称即可保存');
-  });
+  document.addEventListener('DOMContentLoaded', function () {
+    var mapEl = document.getElementById('travel-map');
+    if (!mapEl) return;
+    if (!window.L) {
+      showFallback('地图组件加载失败，仍可在下方列表查看与编辑足迹。');
+      return;
+    }
 
-  document.body.addEventListener('placeAdded', function (event) {
-    addPlace(event.detail);
-    var form = document.getElementById('place-form');
-    if (form) form.reset();
-    if (window.showToast) window.showToast('地点已添加并标记到地图');
+    var dataEl = document.getElementById('places-data');
+    var places = [];
+    try { places = JSON.parse(dataEl ? dataEl.textContent : '[]'); } catch (e) { places = []; }
+
+    var map;
+    try {
+      map = L.map('travel-map', { scrollWheelZoom: true }).setView([30, 110], 3);
+      var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      });
+      tiles.on('tileerror', function () {
+        showFallback('地图瓦片加载失败，仍可在下方列表查看与编辑足迹。');
+      });
+      tiles.addTo(map);
+    } catch (error) {
+      showFallback('地图初始化失败，仍可在下方列表查看与编辑足迹。');
+      return;
+    }
+
+    var colors = {
+      '自然景点': '#34c759',
+      '人文古迹': '#ff9f0a',
+      '美食探店': '#ff375f',
+      '娱乐': '#af52de'
+    };
+    var markerMap = {};
+
+    function addMarker(place) {
+      if (!place || place.lat == null || place.lng == null) return;
+      if (markerMap[place.id]) {
+        map.removeLayer(markerMap[place.id]);
+        delete markerMap[place.id];
+      }
+      var rating = Math.max(0, Math.min(5, Number(place.rating) || 0));
+      var marker = L.circleMarker([Number(place.lat), Number(place.lng)], {
+        radius: 6 + rating * 1.2,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: colors[place.category] || '#0071e3',
+        fillOpacity: place.visited ? 0.95 : 0.6,
+        dashArray: place.visited ? null : '4 3',
+        bubblingMouseEvents: false
+      }).addTo(map);
+      marker.bindTooltip(escapeHtml(place.name));
+      marker.on('click', function () {
+        if (window.AppModal) {
+          window.AppModal.open('/travel/places/' + place.id + '/detail', '足迹详情');
+        }
+      });
+      markerMap[place.id] = marker;
+    }
+
+    function removeMarker(id) {
+      if (id == null || !markerMap[id]) return;
+      map.removeLayer(markerMap[id]);
+      delete markerMap[id];
+    }
+
+    places.forEach(addMarker);
+
+    if (places.length) {
+      var points = places
+        .filter(function (place) { return place.lat != null && place.lng != null; })
+        .map(function (place) { return [Number(place.lat), Number(place.lng)]; });
+      if (points.length > 1) {
+        map.fitBounds(L.latLngBounds(points).pad(0.25));
+      } else if (points.length === 1) {
+        map.setView(points[0], 8);
+      }
+    }
+
+    map.on('click', function (event) {
+      var lat = event.latlng.lat.toFixed(6);
+      var lng = event.latlng.lng.toFixed(6);
+      if (window.AppModal) {
+        window.AppModal.open(
+          '/travel/places/new?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng),
+          '新增足迹'
+        );
+      }
+    });
+
+    function syncMarker(event) {
+      var detail = event.detail || {};
+      if (detail.id == null) return;
+      removeMarker(detail.id);
+      if (detail.lat && detail.lng) addMarker(detail);
+    }
+
+    document.body.addEventListener('placeSaved', syncMarker);
+    document.body.addEventListener('placeAdded', syncMarker);
+    document.body.addEventListener('placeDeleted', function (event) {
+      var detail = event.detail || {};
+      removeMarker(detail.id);
+    });
   });
-});
+})();
 </script>
 {% endblock %}

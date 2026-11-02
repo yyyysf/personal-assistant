@@ -1,0 +1,28 @@
+{% set is_edit = log is not none %}
+<form class="stack-form"
+      hx-post="{{ '/learning/' ~ category ~ '/logs/' ~ log.id ~ '/edit' if is_edit else '/learning/' ~ category ~ '/logs/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>学习记忆</span>
+    <textarea name="content" rows="4" required
+              placeholder="记录今天的理解、卡点或下一步想法">{{ log.content if is_edit else '' }}</textarea>
+  </label>
+
+  <label class="field">
+    <span>当前掌握度（0-100）</span>
+    <input type="number" name="mastery" min="0" max="100" step="5"
+           value="{{ log.mastery if is_edit else default_mastery }}">
+  </label>
+
+  <div class="modal-actions">
+    {% if is_edit %}
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/learning/{{ category }}/logs/{{ log.id }}/delete" hx-swap="none"
+            hx-confirm="删除这条学习记忆？">删除记忆</button>
+    {% endif %}
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '保存记忆' }}</button>
+  </div>
+</form>

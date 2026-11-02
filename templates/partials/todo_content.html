@@ -1,0 +1,9 @@
+<div id="todo-content"
+     data-refresh-url="/todo/content{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  {% if tab == 'goals' %}
+    {% include "partials/todo_goals.html" %}
+  {% else %}
+    {% include "partials/todo_board.html" %}
+  {% endif %}
+</div>

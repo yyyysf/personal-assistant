@@ -1,0 +1,18 @@
+{% macro tag_picker(name='tags', initial='', existing=[], placeholder='输入后回车新建，或选择已有标签') %}
+<div class="tag-picker" x-data='tagPicker({{ initial|tojson }}, {{ existing|tojson }})'>
+  <div class="tag-chips">
+    <template x-for="tag in tags" :key="tag">
+      <span class="tag-chip"><span x-text="tag"></span>
+        <button type="button" @click="remove(tag)" aria-label="移除标签">×</button>
+      </span>
+    </template>
+    <span class="muted-sm" x-show="!tags.length">还没有标签</span>
+  </div>
+  <input class="input" type="text" x-model="draft" @keydown.enter.prevent="add()"
+         :list="'tag-suggest-{{ name }}'" placeholder="{{ placeholder }}">
+  <datalist id="tag-suggest-{{ name }}">
+    {% for tag in existing %}<option value="{{ tag }}"></option>{% endfor %}
+  </datalist>
+  <input type="hidden" name="{{ name }}" :value="tags.join(',')">
+</div>
+{% endmacro %}

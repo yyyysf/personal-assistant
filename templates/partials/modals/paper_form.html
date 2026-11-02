@@ -1,0 +1,46 @@
+{% from "components/tag_picker.html" import tag_picker %}
+<form class="stack-form"
+      hx-post="/research/papers/{{ paper.id }}/edit"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <div class="summary-box">
+    <h4>英文标题</h4>
+    <p>{{ paper.title }}</p>
+  </div>
+
+  <label class="field">
+    <span>中文标题</span>
+    <input type="text" name="title_zh" maxlength="500" value="{{ paper.title_zh }}"
+           placeholder="留空则展示英文原标题">
+  </label>
+
+  <label class="field">
+    <span>中文摘要</span>
+    <textarea name="summary" rows="4">{{ paper.summary }}</textarea>
+  </label>
+
+  <div class="field">
+    <span>标签</span>
+    {{ tag_picker('tags', paper.tags, tag_options) }}
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span>阅读状态</span>
+      <select name="read_status">
+        <option value="unread" {{ 'selected' if paper.read_status == 'unread' }}>未读</option>
+        <option value="read" {{ 'selected' if paper.read_status == 'read' }}>已读</option>
+      </select>
+    </label>
+    <label class="check-line">
+      <input type="checkbox" name="favorite" value="1" {{ 'checked' if paper.favorite }}>
+      收藏这篇论文
+    </label>
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">保存修改</button>
+  </div>
+</form>

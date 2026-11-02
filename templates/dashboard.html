@@ -72,8 +72,7 @@
       <nav class="segmented tabs-scroll" role="tablist" aria-label="板块切换">
         <button type="button" :class="{ active: tab === 'overview' }" @click="tab = 'overview'">总览</button>
         <button type="button" :class="{ active: tab === 'research' }" @click="tab = 'research'">科研</button>
-        <button type="button" :class="{ active: tab === 'video' }" @click="tab = 'video'">AI 视频学习</button>
-        <button type="button" :class="{ active: tab === 'music' }" @click="tab = 'music'">AI 音乐学习</button>
+        <button type="button" :class="{ active: tab === 'learning' }" @click="tab = 'learning'">业余学习</button>
         <button type="button" :class="{ active: tab === 'reading' }" @click="tab = 'reading'">书单阅读</button>
         <button type="button" :class="{ active: tab === 'travel' }" @click="tab = 'travel'">旅游规划</button>
         <button type="button" :class="{ active: tab === 'todo' }" @click="tab = 'todo'">Todo 目标管理</button>
@@ -110,21 +109,14 @@
           <div class="mini-card">
             <div class="mini-head"><h3>今日学习</h3><a href="/learning/video">学习 →</a></div>
             <ul class="plain-list">
-              {% for item in focus.video.today_items %}
+              {% for item in focus.learning.today_items %}
               <li class="list-row">
-                <span class="tag tag-video">视频</span>
+                <span class="tag tag-{{ item.track.category }}">{{ '视频' if item.track.category == 'video' else '音乐' }}</span>
                 <span class="row-title">{{ item.title }}</span>
               </li>
-              {% endfor %}
-              {% for item in focus.music.today_items %}
-              <li class="list-row">
-                <span class="tag tag-music">音乐</span>
-                <span class="row-title">{{ item.title }}</span>
-              </li>
-              {% endfor %}
-              {% if not focus.video.today_items and not focus.music.today_items %}
+              {% else %}
               <li class="empty-inline">今日学习任务已清空或尚未生成。</li>
-              {% endif %}
+              {% endfor %}
             </ul>
           </div>
         </div>
@@ -173,21 +165,25 @@
         <a class="btn btn-ghost" href="/research">进入科研板块</a>
       </div>
 
-      {% for key, summary in [('video', video), ('music', music)] %}
-      <div class="tab-body" x-show="tab === '{{ key }}'" x-cloak>
+      <div class="tab-body" x-show="tab === 'learning'" x-cloak>
         <div class="learning-head">
           <div>
-            <h3>{{ summary.label }}</h3>
-            <p class="muted">{{ summary.done_count }} / {{ summary.total_count }} 项任务完成 · 平均掌握度 {{ summary.progress }}%</p>
+            <h3>业余学习</h3>
+            <p class="muted">{{ learning.done_count }} / {{ learning.total_count }} 项任务完成 · 按全部学习项加权掌握度 {{ learning.progress }}%</p>
           </div>
           <div class="progress-inline">
-            <span style="width: {{ summary.progress }}%"></span>
+            <span style="width: {{ learning.progress }}%"></span>
           </div>
         </div>
+        <div class="inline-stats">
+          {% for track in learning.tracks %}
+          <span><strong>{{ track.progress }}%</strong> {{ track.label }}（{{ track.done_count }}/{{ track.total_count }}）</span>
+          {% endfor %}
+        </div>
         <div class="stack">
-          {% for item in summary.today_items or summary.open_items %}
+          {% for item in learning.today_items or learning.open_items %}
           <div class="list-row list-row-loose">
-            <span class="tag tag-{{ key }}">{{ '今日' if item.scheduled_date == today else '待学' }}</span>
+            <span class="tag tag-{{ item.track.category }}">{{ '今日' if item.scheduled_date == today else '待学' }}</span>
             <span class="row-title">{{ item.title }}</span>
             <span class="row-meta">掌握 {{ item.mastery }}%</span>
           </div>
@@ -195,9 +191,11 @@
           <p class="empty">还没有学习任务，去生成今日路线。</p>
           {% endfor %}
         </div>
-        <a class="btn btn-ghost" href="/learning/{{ key }}">进入学习仪表盘</a>
+        <div class="action-row">
+          <a class="btn btn-ghost" href="/learning/video">AI 视频学习</a>
+          <a class="btn btn-ghost" href="/learning/music">AI 音乐学习</a>
+        </div>
       </div>
-      {% endfor %}
 
       <div class="tab-body" x-show="tab === 'reading'" x-cloak>
         <div class="inline-stats">

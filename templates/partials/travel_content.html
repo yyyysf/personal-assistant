@@ -1,0 +1,140 @@
+{% from "components/pagination.html" import pager %}
+
+<div id="travel-content" class="stack"
+     data-refresh-url="/travel/content{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+  {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  {% if tab == 'draft' %}
+  <section class="panel">
+    <header class="panel-head">
+      <div>
+        <h2>行程草稿</h2>
+        <p class="panel-sub">每页 {{ trip_page_data.per_page }} 份 · 共 {{ trip_page_data.total }} 份</p>
+      </div>
+      <button class="btn btn-primary btn-tiny" type="button"
+              data-modal-url="/travel/trips/new" data-modal-title="新增行程">+ 新增行程</button>
+    </header>
+
+    <div class="list-grid">
+      {% for trip in trips %}
+      <article class="trip-item list-card trip-card" id="trip-{{ trip.id }}"
+               data-detail-url="/travel/trips/{{ trip.id }}/detail" data-detail-title="行程详情">
+        <div class="hover-actions">
+          <button class="icon-btn" type="button" title="编辑行程"
+                  data-modal-url="/travel/trips/{{ trip.id }}/edit" data-modal-title="编辑行程">✎</button>
+          <button class="icon-btn" type="button" title="删除行程"
+                  hx-post="/travel/trips/{{ trip.id }}/delete" hx-swap="none"
+                  hx-confirm="删除行程「{{ trip.title }}」？">✕</button>
+        </div>
+
+        <div class="trip-head">
+          <div>
+            <h3>{{ trip.title }}</h3>
+            <p class="row-meta">
+              {{ trip.start_date|d if trip.start_date else '待定' }} →
+              {{ trip.end_date|d if trip.end_date else '待定' }}
+            </p>
+          </div>
+          <div class="inline-chips">
+            {% if trip.category %}<span class="tag">{{ trip.category }}</span>{% endif %}
+            <span class="tag {{ 'tag-ok' if trip.status == 'done' else ('tag-accent' if trip.status == 'planned' else '') }}">
+              {{ {'draft': '草稿', 'planned': '已计划', 'done': '已完成'}.get(trip.status, trip.status) }}
+            </span>
+          </div>
+        </div>
+
+        {% if trip.tag_list %}
+        <div class="inline-chips">
+          {% for tag in trip.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if trip.itinerary %}<pre class="itinerary clamp-3">{{ trip.itinerary }}</pre>{% endif %}
+        {% if trip.notes %}<p class="muted-sm clamp-2">{{ trip.notes }}</p>{% endif %}
+      </article>
+      {% else %}
+      <div class="empty-panel">
+        <p>还没有行程草稿。点击「+ 新增行程」先记下想去的地方。</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    {{ pager(trip_page_data, 'travel-content', request, 'trip_page', '/travel/content') }}
+  </section>
+  {% else %}
+  <section class="panel">
+    <header class="panel-head">
+      <div>
+        <h2>足迹记录</h2>
+        <p class="panel-sub">每页 {{ page_data.per_page }} 个 · 共 {{ page_data.total }} 个</p>
+      </div>
+      <button class="btn btn-primary btn-tiny" type="button"
+              data-modal-url="/travel/places/new" data-modal-title="新增足迹">+ 新增足迹</button>
+    </header>
+
+    <div class="list-grid">
+      {% for place in places %}
+      <article class="place-item list-card place-card {{ 'is-visited' if place.visited }}"
+               id="place-{{ place.id }}"
+               data-detail-url="/travel/places/{{ place.id }}/detail" data-detail-title="足迹详情">
+        <div class="hover-actions">
+          <button class="icon-btn" type="button" title="编辑足迹"
+                  data-modal-url="/travel/places/{{ place.id }}/edit" data-modal-title="编辑足迹">✎</button>
+          <button class="icon-btn" type="button" title="删除足迹"
+                  hx-post="/travel/places/{{ place.id }}/delete" hx-swap="none"
+                  hx-confirm="删除足迹「{{ place.name }}」？相关照片也会一并删除。">✕</button>
+        </div>
+
+        {% if place.photo_list %}
+        <div class="thumb-row">
+          {% for photo in place.photo_list[:3] %}
+          <img src="{{ photo }}" alt="" loading="lazy">
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="place-head">
+          <span class="place-mark">{{ '✓' if place.visited else '☆' }}</span>
+          <div class="place-head-main">
+            <h3>{{ place.name }}</h3>
+            <p class="row-meta">
+              {% if place.city or place.country %}
+              {{ place.city }}{% if place.city and place.country %} · {% endif %}{{ place.country }}
+              {% else %}地点待补充{% endif %}
+            </p>
+          </div>
+          <div class="inline-chips">
+            {% if place.category %}<span class="tag">{{ place.category }}</span>{% endif %}
+            {% if place.rating %}<span class="stars">{{ '★' * place.rating }}</span>{% endif %}
+          </div>
+        </div>
+
+        {% if place.tag_list %}
+        <div class="inline-chips">
+          {% for tag in place.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if place.notes %}<p class="clamp-3">{{ place.notes }}</p>{% endif %}
+
+        <div class="place-actions">
+          <span class="row-meta">{{ place.date_label or '未记录到访日期' }}</span>
+          <form hx-post="/travel/places/{{ place.id }}/visited" hx-swap="none">
+            <button class="btn btn-tiny btn-ghost" type="submit">
+              {{ '标记未到访' if place.visited else '标记已到访' }}
+            </button>
+          </form>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-panel">
+        <p>还没有足迹。点击地图空白处或「+ 新增足迹」记录第一个地点。</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    {{ pager(page_data, 'travel-content', request, 'page', '/travel/content') }}
+  </section>
+  {% endif %}
+</div>

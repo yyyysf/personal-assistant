@@ -65,11 +65,13 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """建表并写入演示数据（仅首次启动）。"""
+    """建表、执行幂等增量迁移，并按需写入演示数据。"""
+    from src.core.migrations import run_migrations
     from src.core.seed import seed_demo_data
     from src.models import Base as ModelsBase
 
     ModelsBase.metadata.create_all(bind=engine)
+    run_migrations()
     if settings.seed_demo_data:
         with SessionLocal() as db:
             seed_demo_data(db)

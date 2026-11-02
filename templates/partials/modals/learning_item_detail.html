@@ -1,0 +1,48 @@
+<section class="stack">
+  <header>
+    <h3>{{ item.title }}</h3>
+    <p class="muted-sm">
+      {{ '已完成' if item.status == 'done' else '待学' }} ·
+      {{ item.scheduled_date|d if item.scheduled_date else '未排期' }}
+      {% if item.completed_at %} · 完成于 {{ item.completed_at|dt }}{% endif %}
+    </p>
+  </header>
+
+  <div class="mastery-row">
+    <div class="progress"><span style="width: {{ item.mastery }}%"></span></div>
+    <span class="row-meta">掌握 {{ item.mastery }}%</span>
+  </div>
+
+  {% if item.description %}
+  <div class="summary-box">
+    <h4>任务说明</h4>
+    <p>{{ item.description }}</p>
+  </div>
+  {% endif %}
+
+  {% if item.resource_url_list %}
+  <div>
+    <p class="form-section-title">学习资料</p>
+    <div class="inline-chips">
+      {% for url in item.resource_url_list %}
+      <a class="btn btn-tiny btn-ghost" href="{{ url }}" target="_blank" rel="noopener">资料 {{ loop.index }} ↗</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="modal-actions">
+    {% if item.status != 'done' %}
+    <form hx-post="/learning/{{ category }}/items/{{ item.id }}/complete" hx-swap="none">
+      <button class="btn btn-ghost" type="submit">标记完成</button>
+    </form>
+    {% endif %}
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/learning/{{ category }}/items/{{ item.id }}/delete" hx-swap="none"
+            hx-confirm="删除学习任务「{{ item.title }}」？">删除</button>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/learning/{{ category }}/items/{{ item.id }}/edit"
+            data-modal-title="编辑学习任务">编辑</button>
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

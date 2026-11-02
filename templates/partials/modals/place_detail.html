@@ -1,0 +1,61 @@
+<section class="stack">
+  <header>
+    <h3>{{ place.name }}</h3>
+    <p class="muted-sm">
+      {% if place.city or place.country %}
+      {{ place.city }}{% if place.city and place.country %} · {% endif %}{{ place.country }} ·
+      {% endif %}
+      {{ place.date_label or '未记录到访日期' }}
+    </p>
+  </header>
+
+  <div class="inline-chips">
+    <span class="tag {{ 'tag-ok' if place.visited else '' }}">
+      {{ '✓ 已到访' if place.visited else '☆ 愿望清单' }}
+    </span>
+    {% if place.category %}<span class="tag">{{ place.category }}</span>{% endif %}
+    {% if place.rating %}<span class="stars">{{ '★' * place.rating }}</span>{% endif %}
+    {% for tag in place.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+
+  <dl class="detail-grid">
+    <dt>经纬度</dt>
+    <dd>
+      <a href="https://www.openstreetmap.org/?mlat={{ place.lat }}&mlon={{ place.lng }}#map=15/{{ place.lat }}/{{ place.lng }}"
+         target="_blank" rel="noopener">{{ place.lat|round(5) }}, {{ place.lng|round(5) }} ↗</a>
+    </dd>
+    <dt>添加时间</dt><dd>{{ place.created_at|dt }}</dd>
+  </dl>
+
+  {% if place.photo_list %}
+  <div>
+    <p class="form-section-title">照片</p>
+    <div class="image-grid">
+      {% for photo in place.photo_list %}
+      <a href="{{ photo }}" target="_blank" rel="noopener">
+        <img class="image-thumb" src="{{ photo }}" alt="足迹照片" loading="lazy">
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if place.notes %}
+  <div class="summary-box">
+    <h4>游记 / 备注</h4>
+    <p>{{ place.notes }}</p>
+  </div>
+  {% endif %}
+
+  <div class="modal-actions">
+    <form hx-post="/travel/places/{{ place.id }}/visited" hx-swap="none">
+      <button class="btn btn-ghost" type="submit">{{ '标记未到访' if place.visited else '标记已到访' }}</button>
+    </form>
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/travel/places/{{ place.id }}/delete" hx-swap="none"
+            hx-confirm="删除足迹「{{ place.name }}」？相关照片也会一并删除。">删除</button>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/travel/places/{{ place.id }}/edit" data-modal-title="编辑足迹">编辑</button>
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

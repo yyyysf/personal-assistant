@@ -1,0 +1,53 @@
+{% from "components/tag_picker.html" import tag_picker %}
+{% set is_edit = goal is not none %}
+<form class="stack-form"
+      hx-post="{{ '/todo/goals/' ~ goal.id ~ '/edit' if is_edit else '/todo/goals/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>目标标题</span>
+    <input type="text" name="title" maxlength="200" required
+           value="{{ goal.title if is_edit else '' }}"
+           placeholder="例如：完成 AI 音乐学习路线">
+  </label>
+
+  <label class="field">
+    <span>目标说明（可选）</span>
+    <textarea name="description" rows="2"
+              placeholder="一句话说明成功的样子">{{ goal.description if is_edit else '' }}</textarea>
+  </label>
+
+  <div class="field-row">
+    <label class="field">
+      <span>分类</span>
+      <select name="category">
+        <option value="">不分类</option>
+        {% for name in categories %}
+        <option value="{{ name }}" {{ 'selected' if is_edit and goal.category == name }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>目标日期（可选）</span>
+      <input type="date" name="target_date"
+             value="{{ goal.target_date.isoformat() if is_edit and goal.target_date else '' }}">
+    </label>
+  </div>
+
+  <div class="field">
+    <span>标签</span>
+    {{ tag_picker('tags', goal.tags if is_edit else '', tag_options) }}
+  </div>
+
+  <label class="field">
+    <span>当前进度（0-100）</span>
+    <input type="number" name="progress" min="0" max="100" step="5"
+           value="{{ goal.progress if is_edit else 0 }}">
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '创建目标' }}</button>
+  </div>
+</form>

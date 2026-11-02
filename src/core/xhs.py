@@ -105,7 +105,7 @@ def parse_export(raw: bytes | str) -> list[dict[str, str]]:
     return notes
 
 
-def import_notes(db: Session, raw: bytes | str) -> dict:
+def import_notes(db: Session, raw: bytes | str, default_category: str = "") -> dict:
     """解析收藏并入库，同时抽取推荐书单（去重）。"""
     notes = parse_export(raw)
     created_notes = 0
@@ -140,6 +140,7 @@ def import_notes(db: Session, raw: bytes | str) -> dict:
                     title=parsed_book["title"],
                     author=parsed_book["author"],
                     notes=parsed_book.get("reason", ""),
+                    category=default_category.strip()[:60],
                     recommended_by=note["author"] or "小红书收藏",
                     source_note_id=reading_note.id,
                 )

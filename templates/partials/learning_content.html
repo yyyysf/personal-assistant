@@ -1,24 +1,64 @@
-<div id="learning-content" class="stack">
+{% from "components/pagination.html" import pager %}
+
+<div id="learning-content" class="stack"
+     data-refresh-url="/learning/{{ category }}/content{% if request.url.query %}?{{ request.url.query }}{% endif %}">
   {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
+  <section class="panel learning-hero">
+    <div class="learning-hero-main">
+      <div class="ring ring-lg ring-learning-{{ category }}" style="--p: {{ track.progress }}">
+        <span>{{ track.progress }}%</span>
+      </div>
+      <div class="learning-hero-copy">
+        <p class="eyebrow">LEARNING TRACK</p>
+        <h2>{{ track.title or category_label }}</h2>
+        <p>{{ track.description or '根据学习记忆与掌握程度，每天动态拆解可完成的小任务。' }}</p>
+        <p class="muted">{{ done_count }} 项已完成 · {{ open_count }} 项待学</p>
+        {% if guide_urls %}
+        <div class="inline-chips guide-links">
+          {% for url in guide_urls %}
+          <a class="btn btn-tiny btn-ghost" href="{{ url }}" target="_blank" rel="noopener">引导文档 {{ loop.index }} ↗</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/learning/{{ category }}/guide" data-modal-title="编辑学习路线">编辑路线</button>
+  </section>
+
   <section class="panel">
     <header class="panel-head">
-      <div><h2>今日学习任务</h2><p class="panel-sub">15–40 分钟可完成的小步任务</p></div>
-      <span class="badge badge-accent">{{ today_items|length }} 项</span>
+      <div><h2>今日学习任务</h2><p class="panel-sub">15–40 分钟可完成的小步任务，每页 {{ today_page.per_page }} 项</p></div>
+      <span class="badge badge-accent">{{ today_page.total }} 项</span>
     </header>
-    <div class="stack">
+    <div class="list-grid">
       {% for item in today_items %}
-      <article class="learning-item">
+      <article class="learning-item list-card" id="learning-item-{{ item.id }}"
+               data-detail-url="/learning/{{ category }}/items/{{ item.id }}/detail"
+               data-detail-title="学习任务详情">
+        <div class="hover-actions">
+          <button class="icon-btn" type="button" title="编辑任务"
+                  data-modal-url="/learning/{{ category }}/items/{{ item.id }}/edit"
+                  data-modal-title="编辑学习任务">✎</button>
+          <button class="icon-btn" type="button" title="删除任务"
+                  hx-post="/learning/{{ category }}/items/{{ item.id }}/delete" hx-swap="none"
+                  hx-confirm="删除学习任务「{{ item.title }}」？">✕</button>
+        </div>
         <div class="learning-item-head">
           <div>
-            <h3>
-              {% if item.resource_url %}<a href="{{ item.resource_url }}" target="_blank" rel="noopener">{{ item.title }}</a>
-              {% else %}{{ item.title }}{% endif %}
-            </h3>
+            <h3>{{ item.title }}</h3>
             {% if item.description %}<p class="muted">{{ item.description }}</p>{% endif %}
+            {% if item.resource_url_list %}
+            <div class="inline-chips">
+              {% for url in item.resource_url_list %}
+              <a class="btn btn-tiny btn-ghost" href="{{ url }}" target="_blank" rel="noopener">资料 {{ loop.index }} ↗</a>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
-          <form hx-post="/learning/{{ category }}/items/{{ item.id }}/complete" hx-target="#learning-content" hx-swap="outerHTML">
+          <form hx-post="/learning/{{ category }}/items/{{ item.id }}/complete" hx-swap="none">
             <button class="btn btn-tiny btn-primary" type="submit">完成</button>
           </form>
         </div>
@@ -26,54 +66,88 @@
           <div class="progress"><span style="width: {{ item.mastery }}%"></span></div>
           <span class="row-meta">掌握 {{ item.mastery }}%</span>
         </div>
-        <form
-          class="mastery-form"
-          hx-post="/learning/{{ category }}/items/{{ item.id }}/mastery"
-          hx-target="#learning-content"
-          hx-swap="outerHTML">
+        <form class="mastery-form"
+              hx-post="/learning/{{ category }}/items/{{ item.id }}/mastery" hx-swap="none">
           <input type="range" name="mastery" min="0" max="100" step="10" value="{{ item.mastery }}" aria-label="掌握程度">
           <button class="btn btn-tiny" type="submit">记录掌握度</button>
         </form>
       </article>
       {% else %}
-      <p class="empty">今天还没有学习任务。点击上方「生成今日学习任务」，让 AI 根据记忆拆解路线。</p>
+      <div class="empty-panel">
+        <p>今天还没有学习任务。点击「生成今日学习任务」，让 AI 根据记忆拆解路线。</p>
+      </div>
       {% endfor %}
     </div>
+    {{ pager(today_page, 'learning-content', request, 'page_today', '/learning/' ~ category ~ '/content') }}
   </section>
 
   <section class="panel">
     <header class="panel-head">
-      <div><h2>路线待学</h2><p class="panel-sub">后续安排与未排期任务</p></div>
-      <span class="badge">{{ upcoming_items|length }} 项</span>
+      <div><h2>路线待学</h2><p class="panel-sub">后续安排与未排期任务，每页 {{ upcoming_page.per_page }} 项</p></div>
+      <span class="badge">{{ upcoming_page.total }} 项</span>
     </header>
-    <ul class="plain-list">
+    <div class="list-grid">
       {% for item in upcoming_items %}
-      <li class="list-row list-row-loose">
-        <span class="tag">{{ item.scheduled_date|d('%m-%d') if item.scheduled_date else '未排期' }}</span>
-        <span class="row-title">
-          {% if item.resource_url %}<a href="{{ item.resource_url }}" target="_blank" rel="noopener">{{ item.title }}</a>
-          {% else %}{{ item.title }}{% endif %}
-        </span>
-        <span class="row-meta">掌握 {{ item.mastery }}%</span>
-      </li>
+      <article class="learning-item list-card" id="learning-upcoming-{{ item.id }}"
+               data-detail-url="/learning/{{ category }}/items/{{ item.id }}/detail"
+               data-detail-title="学习任务详情">
+        <div class="hover-actions">
+          <button class="icon-btn" type="button" title="编辑任务"
+                  data-modal-url="/learning/{{ category }}/items/{{ item.id }}/edit"
+                  data-modal-title="编辑学习任务">✎</button>
+          <button class="icon-btn" type="button" title="删除任务"
+                  hx-post="/learning/{{ category }}/items/{{ item.id }}/delete" hx-swap="none"
+                  hx-confirm="删除学习任务「{{ item.title }}」？">✕</button>
+        </div>
+        <div class="learning-item-head">
+          <div>
+            <h3>{{ item.title }}</h3>
+            {% if item.description %}<p class="muted">{{ item.description }}</p>{% endif %}
+            {% if item.resource_url_list %}
+            <div class="inline-chips">
+              {% for url in item.resource_url_list %}
+              <a class="btn btn-tiny btn-ghost" href="{{ url }}" target="_blank" rel="noopener">资料 {{ loop.index }} ↗</a>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          <span class="tag">{{ item.scheduled_date|d('%m-%d') if item.scheduled_date else '未排期' }}</span>
+        </div>
+        <div class="mastery-row">
+          <div class="progress"><span style="width: {{ item.mastery }}%"></span></div>
+          <span class="row-meta">掌握 {{ item.mastery }}%</span>
+        </div>
+      </article>
       {% else %}
-      <li class="empty-inline">没有待学任务，路线已清空。</li>
+      <p class="empty-inline">没有待学任务，路线已清空。</p>
       {% endfor %}
-    </ul>
+    </div>
+    {{ pager(upcoming_page, 'learning-content', request, 'page_upcoming', '/learning/' ~ category ~ '/content') }}
   </section>
 
   <details class="panel done-panel">
-    <summary>已完成记录 · {{ done_items|length }} 项</summary>
+    <summary>已完成记录 · {{ done_page.total }} 项</summary>
     <ul class="plain-list">
       {% for item in done_items %}
-      <li class="list-row">
+      <li class="list-row list-row-loose">
         <span class="tag tag-ok">完成</span>
         <span class="row-title">{{ item.title }}</span>
         <span class="row-meta">{{ item.completed_at|dt if item.completed_at else '—' }}</span>
+        <span class="inline-chips">
+          <button class="icon-btn" type="button" title="编辑任务"
+                  data-modal-url="/learning/{{ category }}/items/{{ item.id }}/edit"
+                  data-modal-title="编辑学习任务">✎</button>
+          <button class="icon-btn" type="button" title="删除任务"
+                  hx-post="/learning/{{ category }}/items/{{ item.id }}/delete" hx-swap="none"
+                  hx-confirm="删除学习任务「{{ item.title }}」？">✕</button>
+        </span>
       </li>
       {% else %}
       <li class="empty-inline">还没有完成记录。</li>
       {% endfor %}
     </ul>
+    {{ pager(done_page, 'learning-content', request, 'page_done', '/learning/' ~ category ~ '/content') }}
   </details>
+
+  {% include "partials/learning_logs.html" %}
 </div>

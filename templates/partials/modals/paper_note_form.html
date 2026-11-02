@@ -1,0 +1,22 @@
+<section class="stack">
+  <p class="muted-sm">{{ paper.display_title }}</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form class="stack-form"
+        hx-post="{{ '/research/notes/' ~ note.id ~ '/edit' if note else '/research/papers/' ~ paper.id ~ '/notes/new' }}"
+        hx-target="#modal-body" hx-swap="innerHTML">
+    <label class="field">
+      <span>笔记内容</span>
+      <textarea name="content" rows="6" required
+                placeholder="例如：方法可迁移到我的检索增强实验，对比指标是 Recall@10。">{{ note.content if note else '' }}</textarea>
+    </label>
+    <div class="modal-actions">
+      {% if note %}
+      <button class="btn btn-ghost danger-text" type="button"
+              hx-post="/research/notes/{{ note.id }}/delete" hx-swap="none"
+              hx-confirm="删除这条阅读笔记？">删除笔记</button>
+      {% endif %}
+      <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+      <button class="btn btn-primary" type="submit">{{ '保存笔记' if note else '添加笔记' }}</button>
+    </div>
+  </form>
+</section>

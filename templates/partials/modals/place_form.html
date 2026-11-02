@@ -1,0 +1,114 @@
+{% from "components/date_picker.html" import date_picker %}
+{% from "components/tag_picker.html" import tag_picker %}
+{% set is_edit = place is not none %}
+<form class="stack-form"
+      hx-post="{{ '/travel/places/' ~ place.id ~ '/edit' if is_edit else '/travel/places/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      hx-disabled-elt="find button[type='submit']">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <div class="field-row">
+    <label class="field">
+      <span>地点名称</span>
+      <input type="text" name="name" maxlength="200" required
+             value="{{ values.name }}" placeholder="例如：清水寺">
+    </label>
+    <label class="field">
+      <span>城市</span>
+      <input type="text" name="city" maxlength="100" value="{{ values.city }}" placeholder="京都">
+    </label>
+    <label class="field">
+      <span>国家 / 地区</span>
+      <input type="text" name="country" maxlength="100" value="{{ values.country }}" placeholder="日本">
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span>纬度</span>
+      <input type="number" name="lat" step="any" min="-90" max="90" required
+             value="{{ values.lat }}" placeholder="34.9949">
+    </label>
+    <label class="field">
+      <span>经度</span>
+      <input type="number" name="lng" step="any" min="-180" max="180" required
+             value="{{ values.lng }}" placeholder="135.7850">
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span>分类</span>
+      <select name="category">
+        <option value="">不分类</option>
+        {% for name in categories %}
+        <option value="{{ name }}" {{ 'selected' if values.category == name }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>评分</span>
+      <select name="rating">
+        <option value="0">未评分</option>
+        {% for number in range(1, 6) %}
+        <option value="{{ number }}" {{ 'selected' if values.rating == number }}>{{ '★' * number }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field checkbox-field">
+      <input type="checkbox" name="visited" value="1" {{ 'checked' if values.visited }}>
+      <span>已经去过</span>
+    </label>
+  </div>
+
+  <div class="field">
+    <span>到访日期</span>
+    {{ date_picker(
+      mode=values.date_mode,
+      modes=['single', 'range'],
+      mode_name='date_mode',
+      single_name='visit_date', single_value=values.visit_date,
+      start_name='visit_date', end_name='visit_end_date',
+      start_value=values.visit_date, end_value=values.visit_end_date
+    ) }}
+  </div>
+
+  <div class="field">
+    <span>标签</span>
+    {{ tag_picker('tags', values.tags, tag_options) }}
+  </div>
+
+  <label class="field">
+    <span>游记 / 照片备注</span>
+    <textarea name="notes" rows="3"
+              placeholder="最佳时间、路线提示、想再去的理由…">{{ values.notes }}</textarea>
+  </label>
+
+  {% if is_edit and place.photo_list %}
+  <div class="field">
+    <span>已有照片（取消勾选可删除）</span>
+    <div class="image-grid">
+      {% for photo in place.photo_list %}
+      <label class="image-keep">
+        <img class="image-thumb" src="{{ photo }}" alt="足迹照片">
+        <input type="checkbox" name="keep_photos" value="{{ photo }}"
+               {{ 'checked' if photo in values.keep_photos }}>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <label class="field">
+    <span>新增照片（最多 6 张，单张不超过 5MB）</span>
+    <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple
+           data-image-input="#place-image-preview">
+    <div id="place-image-preview" class="image-preview"></div>
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '保存足迹' }}</button>
+  </div>
+</form>

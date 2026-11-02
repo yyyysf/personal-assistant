@@ -51,6 +51,28 @@ def summarize_paper(title: str, abstract: str, authors: str = "") -> str:
         return f"（本地摘要）{_clean_text(abstract, 220)}"
 
 
+def summarize_paper_bilingual(title: str, abstract: str, authors: str = "") -> tuple[str, str]:
+    """一次调用同时返回中文标题与中文摘要；未配置 Key 时本地降级。"""
+    fallback_summary = f"（本地摘要）{_clean_text(abstract, 220)}"
+    if not is_available():
+        return "", fallback_summary
+    try:
+        text = chat(
+            prompts.PAPER_SUMMARY_BILINGUAL.format(
+                title=title, authors=authors, abstract=abstract[:4000]
+            ),
+            system=prompts.SYSTEM_ASSISTANT,
+            temperature=0.2,
+        )
+        data = _extract_json(text)
+        if isinstance(data, dict) and data.get("summary"):
+            title_zh = str(data.get("title_zh", "")).strip()[:500]
+            return title_zh, str(data["summary"]).strip()
+    except (LLMNotConfigured, LLMError, ValueError, TypeError) as exc:
+        logger.info("论文双语摘要降级：%s", exc)
+    return "", fallback_summary
+
+
 def summarize_news(title: str, source: str, content: str) -> str:
     try:
         return chat(
@@ -61,6 +83,27 @@ def summarize_news(title: str, source: str, content: str) -> str:
         )
     except (LLMNotConfigured, LLMError):
         return _clean_text(content or title, 100)
+
+
+def translate_news_bilingual(title: str, source: str, summary: str) -> tuple[str, str]:
+    """按需把资讯标题与摘要翻译成中文；未配置 Key 时返回空串。"""
+    if not is_available():
+        return "", ""
+    try:
+        text = chat(
+            prompts.NEWS_TRANSLATE.format(title=title, source=source, summary=summary[:3000]),
+            system=prompts.SYSTEM_ASSISTANT,
+            temperature=0.2,
+        )
+        data = _extract_json(text)
+        if isinstance(data, dict):
+            return (
+                str(data.get("title_zh", "")).strip()[:500],
+                str(data.get("summary_zh", "")).strip(),
+            )
+    except (LLMNotConfigured, LLMError, ValueError, TypeError) as exc:
+        logger.info("资讯翻译降级：%s", exc)
+    return "", ""
 
 
 def suggest_tags(title: str, abstract: str) -> str:

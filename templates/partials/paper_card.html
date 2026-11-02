@@ -1,17 +1,37 @@
-<article class="panel paper-card" id="paper-{{ paper.id }}">
+<article
+  class="panel paper-card list-card"
+  id="paper-{{ paper.id }}"
+  data-detail-url="/research/papers/{{ paper.id }}/detail"
+  data-detail-title="论文详情">
+  <div class="hover-actions">
+    <button class="icon-btn" type="button" title="编辑论文"
+            data-modal-url="/research/papers/{{ paper.id }}/edit" data-modal-title="编辑论文">✎</button>
+    <button class="icon-btn" type="button" title="删除论文"
+            hx-post="/research/papers/{{ paper.id }}/delete" hx-swap="none"
+            hx-confirm="删除论文「{{ paper.display_title }}」？相关笔记也会一并删除。">✕</button>
+  </div>
+
   <div class="paper-head">
     <div class="paper-head-main">
       <p class="paper-meta-line">
         <span>{{ paper.arxiv_id }}</span>
-        <span>{{ paper.published_at|d }}</span>
-        {% if paper.fetched_at %}<span>抓取 {{ paper.fetched_at|dt }}</span>{% endif %}
+        <span>提交 {{ paper.published_at|d }}</span>
+        <span>抓取 {{ paper.fetched_at|dt }}</span>
       </p>
-      <h3><a href="{{ paper.url }}" target="_blank" rel="noopener">{{ paper.title }}</a></h3>
+      <h3>
+        <a href="{{ paper.url }}" target="_blank" rel="noopener">{{ paper.display_title }}</a>
+      </h3>
+      {% if paper.title_zh %}
+      <p class="paper-title-en">{{ paper.title }}</p>
+      {% endif %}
       {% if paper.authors %}<p class="authors">{{ paper.authors }}</p>{% endif %}
     </div>
-    <span class="badge {{ 'badge-ok' if paper.read_status == 'read' else 'badge-muted' }}">
-      {{ '已读' if paper.read_status == 'read' else '未读' }}
-    </span>
+    <div class="paper-badges">
+      {% if paper.favorite %}<span class="badge badge-accent">★ 收藏</span>{% endif %}
+      <span class="badge {{ 'badge-ok' if paper.read_status == 'read' else 'badge-muted' }}">
+        {{ '已读' if paper.read_status == 'read' else '未读' }}
+      </span>
+    </div>
   </div>
 
   {% if card_notice is defined and card_notice %}
@@ -23,39 +43,36 @@
 
   {% if paper.summary %}
   <div class="summary-box">
-    <h4>AI 摘要</h4>
+    <h4>中文摘要</h4>
     <p>{{ paper.summary }}</p>
   </div>
   {% endif %}
 
   <details class="abstract-block">
-    <summary>查看原文摘要</summary>
+    <summary>查看英文原文摘要</summary>
     <p>{{ paper.abstract }}</p>
   </details>
 
   <div class="tag-row">
-    {% for tag in paper.tags.split(',') if tag.strip() %}
-    <span class="tag">{{ tag.strip() }}</span>
+    {% for tag in paper.tag_list %}
+    <span class="tag">{{ tag }}</span>
     {% endfor %}
   </div>
 
   <div class="paper-actions">
-    <form hx-post="/research/papers/{{ paper.id }}/summarize" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML" hx-disabled-elt="find button">
-      <button class="btn btn-tiny" type="submit">生成 / 更新摘要</button>
-    </form>
-    <form hx-post="/research/papers/{{ paper.id }}/read" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML">
-      <button class="btn btn-tiny" type="submit">{{ '标记未读' if paper.read_status == 'read' else '标记已读' }}</button>
-    </form>
-    <form hx-post="/research/papers/{{ paper.id }}/zotero" hx-target="#paper-{{ paper.id }}" hx-swap="outerHTML" hx-disabled-elt="find button">
-      <button class="btn btn-tiny btn-primary" type="submit" {{ 'disabled' if paper.imported_to_zotero else '' }}>
+    <form hx-post="/research/papers/{{ paper.id }}/zotero" hx-swap="none" hx-disabled-elt="find button">
+      <button class="btn btn-tiny btn-primary" type="submit" {{ 'disabled' if paper.imported_to_zotero }}>
         {{ '已入 Zotero' if paper.imported_to_zotero else '导入 Zotero' }}
       </button>
     </form>
+    <form hx-post="/research/papers/{{ paper.id }}/read" hx-swap="none">
+      <button class="btn btn-tiny" type="submit">{{ '标记未读' if paper.read_status == 'read' else '标记已读' }}</button>
+    </form>
+    <button class="btn btn-tiny btn-ghost" type="button"
+            data-modal-url="/research/papers/{{ paper.id }}/notes/new" data-modal-title="新增阅读笔记">笔记</button>
+    <form hx-post="/research/papers/{{ paper.id }}/favorite" hx-swap="none">
+      <button class="btn btn-tiny btn-ghost" type="submit">{{ '取消收藏' if paper.favorite else '收藏' }}</button>
+    </form>
     <a class="btn btn-tiny btn-ghost" href="{{ paper.url }}" target="_blank" rel="noopener">原文 ↗</a>
   </div>
-
-  <details class="notes-block">
-    <summary>阅读笔记 · {{ paper.notes|length }} 条</summary>
-    {% include "partials/paper_notes.html" %}
-  </details>
 </article>

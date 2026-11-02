@@ -1,0 +1,32 @@
+<section class="stack">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <p class="muted-sm">
+    使用油猴脚本导出的小红书收藏 JSON，无需登录、不抓取 Cookie。导入后会自动抽取博主推荐书单。
+  </p>
+  <form class="stack-form"
+        hx-post="/reading/upload"
+        hx-target="#reading-content"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        hx-disabled-elt="find button"
+        hx-indicator="#upload-loading">
+    <label class="field">
+      <span>收藏 JSON 文件</span>
+      <input type="file" name="file" accept=".json,application/json" required aria-label="选择小红书收藏 JSON 文件">
+    </label>
+    <label class="field">
+      <span>默认分类</span>
+      <select name="default_category">
+        <option value="">不分类</option>
+        {% for name in categories %}
+        <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="modal-actions">
+      <span id="upload-loading" class="loading-line htmx-indicator">正在解析笔记并抽取书单…</span>
+      <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+      <button class="btn btn-primary" type="submit">解析并导入</button>
+    </div>
+  </form>
+</section>

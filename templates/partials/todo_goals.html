@@ -1,12 +1,19 @@
-<section class="panel goals-panel" id="todo-goals">
-  <header class="panel-head">
-    <div><h2>目标拆解</h2><p class="panel-sub">大目标用小进度推进</p></div>
-    <span class="badge">{{ goals|length }} 个</span>
-  </header>
+{% from "components/pagination.html" import pager %}
 
-  <div class="stack">
-    {% for goal in goals %}
-    <article class="goal-card">
+<section class="goals-panel" id="todo-goals">
+  <div class="goals-grid">
+    {% for goal in goals_page['items'] %}
+    <article
+      class="goal-card"
+      data-detail-url="/todo/goals/{{ goal.id }}/detail"
+      data-detail-title="目标详情">
+      <div class="hover-actions">
+        <button class="icon-btn" type="button" title="编辑目标"
+                data-modal-url="/todo/goals/{{ goal.id }}/edit" data-modal-title="编辑目标">✎</button>
+        <button class="icon-btn" type="button" title="删除目标"
+                hx-post="/todo/goals/{{ goal.id }}/delete" hx-swap="none"
+                hx-confirm="删除目标「{{ goal.title }}」？关联任务会保留。">✕</button>
+      </div>
       <div class="goal-top">
         <h3>{{ goal.title }}</h3>
         <strong>{{ goal.progress }}%</strong>
@@ -17,37 +24,23 @@
         <span>{{ ('截止 ' ~ goal.target_date|d) if goal.target_date else '长期目标' }}</span>
         <span>{{ goal.tasks|length }} 个任务</span>
       </div>
+      <div class="inline-chips">
+        {% if goal.category %}<span class="badge badge-muted">{{ goal.category }}</span>{% endif %}
+        {% for tag in goal.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+      </div>
       <form
         class="range-form"
         hx-post="/todo/goals/{{ goal.id }}/progress"
-        hx-target="#todo-goals"
-        hx-swap="outerHTML"
+        hx-swap="none"
         hx-trigger="change">
-        <input type="range" name="progress" min="0" max="100" step="5" value="{{ goal.progress }}" aria-label="目标进度">
+        <input type="range" name="progress" min="0" max="100" step="5" value="{{ goal.progress }}"
+               aria-label="目标进度">
       </form>
     </article>
     {% else %}
-    <p class="empty">还没有目标，先写下本阶段最重要的一件事。</p>
+    <p class="empty">还没有目标，点击右上角「+ 新增目标」写下本阶段最重要的事。</p>
     {% endfor %}
   </div>
 
-  <form
-    class="stack-form"
-    hx-post="/todo/goals"
-    hx-target="#todo-goals"
-    hx-swap="outerHTML">
-    <label class="field">
-      <span>新增目标</span>
-      <input type="text" name="title" maxlength="200" required placeholder="例如：完成 AI 音乐学习路线">
-    </label>
-    <label class="field">
-      <span>目标说明（可选）</span>
-      <input type="text" name="description" placeholder="一句话说明成功的样子">
-    </label>
-    <label class="field">
-      <span>目标日期（可选）</span>
-      <input type="date" name="target_date">
-    </label>
-    <button class="btn btn-ghost" type="submit">创建目标</button>
-  </form>
+  {{ pager(goals_page, 'todo-content', request, 'page_goals', '/todo/content') }}
 </section>

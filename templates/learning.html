@@ -9,65 +9,25 @@
   <a href="/learning/music" class="{{ 'active' if category == 'music' }}">AI 音乐学习</a>
 </nav>
 
-<section class="panel learning-hero">
-  <div class="learning-hero-main">
-    <div class="ring ring-lg ring-learning-{{ category }}" style="--p: {{ track.progress }}">
-      <span>{{ track.progress }}%</span>
-    </div>
-    <div class="learning-hero-copy">
-      <p class="eyebrow">LEARNING TRACK</p>
-      <h2>{{ track.title or category_label }}</h2>
-      <p>{{ track.description or '根据学习记忆与掌握程度，每天动态拆解可完成的小任务。' }}</p>
-      <p class="muted">{{ done_items|length }} 项已完成 · {{ open_items|length }} 项待学</p>
-    </div>
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2>按掌握度推进的每日学习路线</h2>
+    <p>读取学习记忆与掌握程度，把大目标拆成 15–40 分钟可完成的小任务。</p>
   </div>
-  <form
-    hx-post="/learning/{{ category }}/plan"
-    hx-target="#learning-content"
-    hx-swap="outerHTML"
-    hx-disabled-elt="find button"
-    hx-indicator="#plan-loading">
-    <button class="btn btn-primary" type="submit">生成今日学习任务</button>
-    <span id="plan-loading" class="loading-line htmx-indicator">正在读取学习记忆并生成路线…</span>
-  </form>
+  <div class="action-row">
+    <form hx-post="/learning/{{ category }}/plan" hx-target="#learning-content"
+          hx-swap="outerHTML" hx-disabled-elt="find button" hx-indicator="#plan-loading">
+      <button class="btn btn-primary" type="submit">生成今日学习任务</button>
+    </form>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/learning/{{ category }}/items/new"
+            data-modal-title="新增学习任务">+ 新增任务</button>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/learning/{{ category }}/guide"
+            data-modal-title="编辑学习路线">编辑路线</button>
+  </div>
 </section>
+<span id="plan-loading" class="loading-line htmx-indicator">正在读取学习记忆并生成路线…</span>
 
-<div class="split-layout">
-  <div class="split-main">
-    <div id="learning-content">
-      {% include "partials/learning_content.html" %}
-    </div>
-  </div>
-
-  <aside class="split-side">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>添加学习任务</h2><p class="panel-sub">手动补充教程或练习</p></div>
-      </header>
-      <form class="stack-form" hx-post="/learning/{{ category }}/items" hx-target="#learning-content" hx-swap="outerHTML">
-        <label class="field">
-          <span>任务标题</span>
-          <input type="text" name="title" maxlength="300" required placeholder="例如：完成 MusicGen 官方 Colab">
-        </label>
-        <label class="field">
-          <span>说明（可选）</span>
-          <input type="text" name="description" placeholder="完成标准或关键步骤">
-        </label>
-        <label class="field">
-          <span>教程链接（可选）</span>
-          <input type="url" name="resource_url" placeholder="https://...">
-        </label>
-        <label class="field">
-          <span>计划日期</span>
-          <input type="date" name="scheduled_date">
-        </label>
-        <button class="btn btn-ghost" type="submit">加入路线</button>
-      </form>
-    </section>
-
-    <div>
-      {% include "partials/learning_logs.html" %}
-    </div>
-  </aside>
-</div>
+{% include "partials/learning_content.html" %}
 {% endblock %}

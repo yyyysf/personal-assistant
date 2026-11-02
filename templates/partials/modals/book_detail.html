@@ -1,0 +1,50 @@
+<section class="stack">
+  <header>
+    <h3>《{{ book.title }}》</h3>
+    <p class="muted-sm">
+      {{ book.author or '作者未知' }} · {{ book.recommended_by or '手动添加' }}
+      {% if book.rating %} · <span class="stars">{{ '★' * book.rating }}</span>{% endif %}
+    </p>
+  </header>
+
+  <div class="inline-chips">
+    {% if book.category %}<span class="tag">{{ book.category }}</span>{% endif %}
+    <span class="tag {{ 'tag-ok' if book.status == 'finished' else ('tag-accent' if book.status == 'reading' else '') }}">
+      {{ {'reading': '在读', 'want': '想读', 'finished': '已读'}[book.status] }}
+    </span>
+    {% for tag in book.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+
+  <dl class="detail-grid">
+    <dt>添加时间</dt><dd>{{ book.created_at|dt }}</dd>
+    <dt>完成时间</dt><dd>{{ book.finished_at|dt }}</dd>
+    <dt>资源链接</dt>
+    <dd>
+      {% if book.resource_url %}
+      <a href="{{ book.resource_url }}" target="_blank" rel="noopener">{{ book.resource_url }}</a>
+      {% else %}—{% endif %}
+    </dd>
+    <dt>来源笔记</dt>
+    <dd>
+      {% if book.source_note and book.source_note.url %}
+      <a href="{{ book.source_note.url }}" target="_blank" rel="noopener">{{ book.source_note.title }}</a>
+      {% else %}—{% endif %}
+    </dd>
+  </dl>
+
+  {% if book.notes %}
+  <div class="summary-box">
+    <h4>读书笔记 / 推荐理由</h4>
+    <p>{{ book.notes }}</p>
+  </div>
+  {% endif %}
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/reading/books/{{ book.id }}/delete" hx-swap="none"
+            hx-confirm="从书单中删除《{{ book.title }}》？">删除</button>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/reading/books/{{ book.id }}/edit" data-modal-title="编辑书籍">编辑</button>
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

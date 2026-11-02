@@ -5,6 +5,7 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -82,16 +83,38 @@ templates.env.filters["md"] = _simple_markdown
 templates.env.globals["app_name"] = settings.app_name
 templates.env.globals["current_year"] = today().year
 
-NAV_ITEMS = [
+NAV_GROUPS = [
     {"key": "dashboard", "href": "/", "label": "首页仪表盘", "icon": "◉"},
     {"key": "todo", "href": "/todo", "label": "任务与目标", "icon": "✓"},
     {"key": "research", "href": "/research", "label": "科研论文", "icon": "◈"},
     {"key": "reading", "href": "/reading", "label": "书单阅读", "icon": "▤"},
     {"key": "news", "href": "/news", "label": "前沿资讯", "icon": "◎"},
-    {"key": "video", "href": "/learning/video", "label": "AI 视频学习", "icon": "▷"},
-    {"key": "music", "href": "/learning/music", "label": "AI 音乐学习", "icon": "♪"},
+    {
+        "key": "learning",
+        "label": "业余学习",
+        "icon": "▷",
+        "children": [
+            {"key": "video", "href": "/learning/video", "label": "AI 视频学习", "icon": "▷"},
+            {"key": "music", "href": "/learning/music", "label": "AI 音乐学习", "icon": "♪"},
+        ],
+    },
     {"key": "travel", "href": "/travel", "label": "旅游规划", "icon": "⌖"},
 ]
+NAV_ITEMS = [item for group in NAV_GROUPS for item in (group.get("children") or [group])]
+
+
+def _page_href(request: Request, param: str, value: Any) -> str:
+    return str(request.url.include_query_params(**{param: value}))
+
+
+def _query_href(request: Request, action: str, param: str, value: Any) -> str:
+    items = [(key, val) for key, val in request.query_params.multi_items() if key != param]
+    items.append((param, str(value)))
+    return f"{action}?{urlencode(items)}"
+
+
+templates.env.globals["page_href"] = _page_href
+templates.env.globals["query_href"] = _query_href
 
 
 def render(
@@ -105,6 +128,7 @@ def render(
         "request": request,
         "active": active,
         "nav_items": NAV_ITEMS,
+        "nav_groups": NAV_GROUPS,
         "today": today(),
         "llm_ready": settings.llm_configured,
         "zotero_ready": settings.zotero_configured,
@@ -131,4 +155,4 @@ def render_partial(
     )
 
 
-__all__ = ["get_db", "render", "render_partial", "templates", "NAV_ITEMS"]
+__all__ = ["get_db", "render", "render_partial", "templates", "NAV_GROUPS", "NAV_ITEMS"]

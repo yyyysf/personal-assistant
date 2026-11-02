@@ -1,0 +1,27 @@
+{% macro pager(page, target, request, param='page', action='') %}
+{% if page.pages > 1 %}
+{% macro _href(number) %}{{ query_href(request, action, param, number) if action else page_href(request, param, number) }}{% endmacro %}
+<nav class="pager" aria-label="分页">
+  <span>第 {{ page.page }} / {{ page.pages }} 页 · 共 {{ page.total }} 条</span>
+  <div class="pager-pages">
+    {% if page.has_prev %}
+    <button type="button" class="pager-btn" hx-get="{{ _href(page.page - 1) }}"
+            hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true">上一页</button>
+    {% else %}
+    <span class="pager-btn" aria-disabled="true">上一页</span>
+    {% endif %}
+    {% for number in range(1, page.pages + 1) %}
+    <button type="button" class="pager-btn{% if number == page.page %} is-active{% endif %}"
+            hx-get="{{ _href(number) }}"
+            hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true">{{ number }}</button>
+    {% endfor %}
+    {% if page.has_next %}
+    <button type="button" class="pager-btn" hx-get="{{ _href(page.page + 1) }}"
+            hx-target="#{{ target }}" hx-swap="outerHTML" hx-push-url="true">下一页</button>
+    {% else %}
+    <span class="pager-btn" aria-disabled="true">下一页</span>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}
+{% endmacro %}

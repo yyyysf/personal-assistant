@@ -529,6 +529,7 @@ img { max-width: 100%; }
 .ring-research { --ring-color: #5e5ce6; }
 .ring-video { --ring-color: #ff9500; }
 .ring-music { --ring-color: #af52de; }
+.ring-learning { --ring-color: #ff9500; }
 .ring-reading { --ring-color: #34c759; }
 .ring-travel { --ring-color: #00c7be; }
 .ring-info { display: flex; flex-direction: column; min-width: 0; }

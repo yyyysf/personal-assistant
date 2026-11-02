@@ -1,11 +1,24 @@
+{% from "components/pagination.html" import pager %}
+
 <section class="panel" id="learning-logs">
   <header class="panel-head">
-    <div><h2>学习记忆</h2><p class="panel-sub">LLM 下次生成的依据</p></div>
+    <div><h2>学习记忆</h2><p class="panel-sub">AI 下次生成路线的依据，每页 {{ logs_page.per_page }} 条</p></div>
+    <button class="btn btn-tiny btn-ghost" type="button"
+            data-modal-url="/learning/{{ category }}/logs/new"
+            data-modal-title="记录学习记忆">+ 记录记忆</button>
   </header>
 
   <div class="log-list">
     {% for log in logs %}
-    <div class="log-item">
+    <div class="log-item list-card">
+      <div class="hover-actions">
+        <button class="icon-btn" type="button" title="编辑记忆"
+                data-modal-url="/learning/{{ category }}/logs/{{ log.id }}/edit"
+                data-modal-title="编辑学习记忆">✎</button>
+        <button class="icon-btn" type="button" title="删除记忆"
+                hx-post="/learning/{{ category }}/logs/{{ log.id }}/delete" hx-swap="none"
+                hx-confirm="删除这条学习记忆？">✕</button>
+      </div>
       <p>{{ log.content }}</p>
       <span class="note-meta">{{ log.source }} · 掌握度 {{ log.mastery }}% · {{ log.created_at|dt }}</span>
     </div>
@@ -14,15 +27,5 @@
     {% endfor %}
   </div>
 
-  <form class="stack-form" hx-post="/learning/{{ category }}/logs" hx-target="#learning-logs" hx-swap="outerHTML">
-    <label class="field">
-      <span>记录今天的理解或卡点</span>
-      <textarea name="content" rows="3" required placeholder="例如：已经理解扩散过程，但注意力张量形状还需再推导一遍。"></textarea>
-    </label>
-    <label class="field">
-      <span>当前掌握度</span>
-      <input type="number" name="mastery" min="0" max="100" step="5" value="{{ track.progress }}">
-    </label>
-    <button class="btn btn-ghost" type="submit">保存学习记忆</button>
-  </form>
+  {{ pager(logs_page, 'learning-content', request, 'page_logs', '/learning/' ~ category ~ '/content') }}
 </section>

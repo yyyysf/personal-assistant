@@ -1,0 +1,66 @@
+<article
+  class="book-item list-card book-card"
+  id="book-{{ book.id }}"
+  data-detail-url="/reading/books/{{ book.id }}/detail"
+  data-detail-title="书籍详情">
+  <div class="hover-actions">
+    <button class="icon-btn" type="button" title="编辑书籍"
+            data-modal-url="/reading/books/{{ book.id }}/edit" data-modal-title="编辑书籍">✎</button>
+    <button class="icon-btn" type="button" title="删除书籍"
+            hx-post="/reading/books/{{ book.id }}/delete" hx-swap="none"
+            hx-confirm="从书单中删除《{{ book.title }}》？">✕</button>
+  </div>
+
+  <label class="book-select">
+    <input type="checkbox" name="book_ids" value="{{ book.id }}" form="book-batch-form"
+           aria-label="选择《{{ book.title }}》">
+  </label>
+
+  {% if book.source_note and book.source_note.cover_url %}
+  <img class="book-cover" src="{{ book.source_note.cover_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+  {% else %}
+  <div class="book-cover book-cover-fallback">《{{ book.title[:1] }}》</div>
+  {% endif %}
+
+  <div class="book-main">
+    <div class="book-head">
+      <h3>《{{ book.title }}》</h3>
+      <div class="inline-chips">
+        {% if book.category %}<span class="tag">{{ book.category }}</span>{% endif %}
+        <span class="tag {{ 'tag-ok' if book.status == 'finished' else ('tag-accent' if book.status == 'reading' else '') }}">
+          {{ {'reading': '在读', 'want': '想读', 'finished': '已读'}[book.status] }}
+        </span>
+      </div>
+    </div>
+
+    <p class="book-meta">
+      {% if book.author %}{{ book.author }} · {% endif %}
+      {{ book.recommended_by or '手动添加' }}
+      {% if book.rating %} · <span class="stars">{{ '★' * book.rating }}</span>{% endif %}
+    </p>
+
+    {% if book.tag_list %}
+    <div class="inline-chips">
+      {% for tag in book.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if book.notes %}<p class="book-notes clamp-3">{{ book.notes }}</p>{% endif %}
+
+    <div class="book-actions">
+      <form hx-post="/reading/books/{{ book.id }}/status" hx-swap="none">
+        <select name="status" aria-label="更新阅读状态" onchange="this.form.requestSubmit()">
+          <option value="want" {{ 'selected' if book.status == 'want' }}>想读</option>
+          <option value="reading" {{ 'selected' if book.status == 'reading' }}>在读</option>
+          <option value="finished" {{ 'selected' if book.status == 'finished' }}>已读</option>
+        </select>
+      </form>
+      {% if book.source_note and book.source_note.url %}
+      <a class="btn btn-tiny btn-ghost" href="{{ book.source_note.url }}" target="_blank" rel="noopener">原笔记 ↗</a>
+      {% endif %}
+      {% if book.resource_url %}
+      <a class="btn btn-tiny btn-ghost" href="{{ book.resource_url }}" target="_blank" rel="noopener">资源 ↗</a>
+      {% endif %}
+    </div>
+  </div>
+</article>

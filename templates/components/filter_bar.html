@@ -1,0 +1,11 @@
+{% macro filter_bar(target, action='') %}
+<form class="filter-bar"{% if action %} hx-get="{{ action }}"{% endif %} hx-target="#{{ target }}"
+      hx-swap="outerHTML" hx-push-url="true" hx-trigger="change, submit">
+  {{ caller() }}
+  <input type="hidden" name="page" value="1">
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">筛选</button>
+    <a class="btn btn-ghost" href="{{ request.url.path }}">重置</a>
+  </div>
+</form>
+{% endmacro %}

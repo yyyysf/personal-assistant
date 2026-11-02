@@ -1,0 +1,44 @@
+<section class="stack">
+  <header>
+    <h3>{{ item.display_title }}</h3>
+    {% if item.title_zh %}<p class="paper-title-en">{{ item.title }}</p>{% endif %}
+    <p class="muted-sm">
+      {{ item.source }} · {{ (item.published_at or item.fetched_at)|dt }}
+      {% if item.favorite %} · <span class="badge badge-accent">★ 收藏</span>{% endif %}
+    </p>
+  </header>
+
+  {% if item.summary_zh %}
+  <div class="summary-box">
+    <h4>中文摘要</h4>
+    <p>{{ item.summary_zh }}</p>
+  </div>
+  {% elif item.summary %}
+  <div class="alert alert-info">尚未生成中文摘要，可点击下方「生成中文摘要」按需翻译并缓存。</div>
+  {% endif %}
+
+  {% if item.summary %}
+  <details class="abstract-block" {{ 'open' if not item.summary_zh }}>
+    <summary>原文摘要</summary>
+    <p>{{ item.summary }}</p>
+  </details>
+  {% endif %}
+
+  <div class="modal-actions">
+    <a class="btn btn-ghost" href="{{ item.link }}" target="_blank" rel="noopener">原文 ↗</a>
+    {% if item.comment_url %}
+    <a class="btn btn-ghost" href="{{ item.comment_url }}" target="_blank" rel="noopener">评论 ↗</a>
+    {% endif %}
+    <form hx-post="/news/items/{{ item.id }}/favorite" hx-swap="none">
+      <button class="btn btn-ghost" type="submit">{{ '取消收藏' if item.favorite else '收藏' }}</button>
+    </form>
+    <form hx-post="/news/items/{{ item.id }}/summarize" hx-target="#modal-body" hx-swap="innerHTML"
+          hx-disabled-elt="find button">
+      <button class="btn btn-ghost" type="submit">生成中文摘要</button>
+    </form>
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/news/items/{{ item.id }}/delete" hx-swap="none"
+            hx-confirm="删除这条资讯？">删除</button>
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

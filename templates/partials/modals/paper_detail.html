@@ -1,0 +1,75 @@
+<section class="stack">
+  <header>
+    <h3>{{ paper.display_title }}</h3>
+    {% if paper.title_zh %}<p class="paper-title-en">{{ paper.title }}</p>{% endif %}
+    <p class="muted-sm">
+      {{ paper.arxiv_id }} · 提交 {{ paper.published_at|d }} · {{ paper.authors or '作者未知' }}
+    </p>
+  </header>
+
+  <div class="inline-chips">
+    {% if paper.favorite %}<span class="badge badge-accent">★ 收藏</span>{% endif %}
+    <span class="badge {{ 'badge-ok' if paper.read_status == 'read' else 'badge-muted' }}">
+      {{ '已读' if paper.read_status == 'read' else '未读' }}
+    </span>
+    <span class="badge {{ 'badge-ok' if paper.imported_to_zotero else 'badge-muted' }}">
+      {{ '已入 Zotero' if paper.imported_to_zotero else '未入 Zotero' }}
+    </span>
+    {% for tag in paper.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+
+  {% if paper.summary %}
+  <div class="summary-box">
+    <h4>中文摘要</h4>
+    <p>{{ paper.summary }}</p>
+  </div>
+  {% endif %}
+
+  <details class="abstract-block" open>
+    <summary>英文原文摘要</summary>
+    <p>{{ paper.abstract }}</p>
+  </details>
+
+  <div>
+    <div class="panel-head">
+      <div><h2>阅读笔记</h2><p class="panel-sub">{{ paper.notes|length }} 条</p></div>
+      <button class="btn btn-tiny btn-ghost" type="button"
+              data-modal-url="/research/papers/{{ paper.id }}/notes/new"
+              data-modal-title="新增阅读笔记">+ 新增笔记</button>
+    </div>
+    <div class="notes-inner">
+      {% for note in paper.notes %}
+      <div class="note-item">
+        <p>{{ note.content }}</p>
+        <div class="note-item-foot">
+          <span class="note-meta">{{ note.source }} · {{ note.created_at|dt }}</span>
+          <span class="inline-chips">
+            <button class="icon-btn" type="button" title="编辑笔记"
+                    data-modal-url="/research/notes/{{ note.id }}/edit" data-modal-title="编辑笔记">✎</button>
+            <button class="icon-btn" type="button" title="删除笔记"
+                    hx-post="/research/notes/{{ note.id }}/delete" hx-swap="none"
+                    hx-confirm="删除这条阅读笔记？">✕</button>
+          </span>
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-inline">还没有笔记。记下这篇论文与你当前研究的关系。</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="modal-actions">
+    <form hx-post="/research/papers/{{ paper.id }}/zotero" hx-swap="none" hx-disabled-elt="find button">
+      <button class="btn btn-ghost" type="submit" {{ 'disabled' if paper.imported_to_zotero }}>
+        {{ '已入 Zotero' if paper.imported_to_zotero else '导入 Zotero' }}
+      </button>
+    </form>
+    <a class="btn btn-ghost" href="{{ paper.url }}" target="_blank" rel="noopener">原文 ↗</a>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/research/papers/{{ paper.id }}/edit" data-modal-title="编辑论文">编辑</button>
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/research/papers/{{ paper.id }}/delete" hx-swap="none"
+            hx-confirm="删除论文「{{ paper.display_title }}」？相关笔记也会一并删除。">删除</button>
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

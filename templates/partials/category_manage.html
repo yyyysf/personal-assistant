@@ -1,0 +1,33 @@
+<section class="stack" id="category-manage">
+  <p class="muted-sm">管理「{{ scope_label }}」分类。删除分类不会删除条目，只会清空其分类字段。</p>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  <div class="category-rows">
+    {% for category in categories %}
+    <div class="category-row">
+      <form
+        class="category-rename"
+        hx-post="/categories/{{ scope }}/{{ category.id }}/rename"
+        hx-target="#category-manage"
+        hx-swap="outerHTML">
+        <input type="text" name="name" value="{{ category.name }}" maxlength="60" required aria-label="分类名称">
+        <button class="btn btn-ghost btn-tiny" type="submit">保存</button>
+      </form>
+      <button
+        class="btn btn-ghost btn-tiny danger-text"
+        type="button"
+        hx-post="/categories/{{ scope }}/{{ category.id }}/delete"
+        hx-target="#category-manage"
+        hx-swap="outerHTML"
+        hx-confirm="删除分类「{{ category.name }}」？相关条目的分类将被清空。">删除</button>
+    </div>
+    {% else %}
+    <p class="empty-inline">还没有分类，先在下方添加一个。</p>
+    {% endfor %}
+  </div>
+
+  <form class="inline-form" hx-post="/categories/{{ scope }}" hx-target="#category-manage" hx-swap="outerHTML">
+    <input type="text" name="name" maxlength="60" required placeholder="新增{{ scope_label }}分类">
+    <button class="btn btn-primary" type="submit">添加分类</button>
+  </form>
+</section>

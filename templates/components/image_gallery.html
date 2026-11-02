@@ -1,0 +1,8 @@
+{% macro image_gallery(photos=[], empty='暂无图片') %}
+<div class="image-grid">
+  {% for photo in photos %}
+  <img class="image-thumb" src="{{ photo }}" alt="旅行照片" loading="lazy">
+  {% endfor %}
+  {% if not photos %}<span class="image-empty">{{ empty }}</span>{% endif %}
+</div>
+{% endmacro %}

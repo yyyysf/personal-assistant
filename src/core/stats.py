@@ -71,6 +71,28 @@ def activity_counts(db: Session, start: date, end: date) -> dict[date, int]:
         if completed_at:
             counts[completed_at.date()] = counts.get(completed_at.date(), 0) + 1
 
+    for column in (Paper.read_at, Book.finished_at, Goal.completed_at):
+        stamps = db.scalars(
+            select(column).where(
+                column.is_not(None),
+                column >= start_dt,
+                column < end_dt,
+            )
+        ).all()
+        for stamp in stamps:
+            if stamp:
+                counts[stamp.date()] = counts.get(stamp.date(), 0) + 1
+
+    visit_dates = db.scalars(
+        select(Place.visit_date).where(
+            Place.visit_date.is_not(None),
+            Place.visit_date.between(start, end),
+        )
+    ).all()
+    for visit_date in visit_dates:
+        if visit_date:
+            counts[visit_date] = counts.get(visit_date, 0) + 1
+
     return counts
 
 
@@ -125,6 +147,39 @@ def week_completion(db: Session) -> dict:
     return {"rate": rate, "done": done, "total": total, "week_start": start}
 
 
+def learning_summary(db: Session) -> dict:
+    """视频与音乐合并为一个学习视图，进度按全部学习项掌握度加权。"""
+    tracks = db.scalars(select(LearningTrack).order_by(LearningTrack.id)).all()
+    items = [item for track in tracks for item in track.items]
+    total = len(items)
+    progress = round(sum(item.mastery for item in items) / total) if total else 0
+    today_items = [
+        item for item in items if item.scheduled_date == today() and item.status != "done"
+    ]
+    open_items = sorted(
+        [item for item in items if item.status != "done"],
+        key=lambda item: (item.scheduled_date is None, item.scheduled_date or date.max, item.id),
+    )
+    return {
+        "label": "业余学习",
+        "progress": progress,
+        "today_items": today_items,
+        "open_items": open_items[:6],
+        "done_count": sum(1 for item in items if item.status == "done"),
+        "total_count": total,
+        "tracks": [
+            {
+                "category": track.category,
+                "label": track.title or CATEGORY_LABELS.get(track.category, track.category),
+                "progress": track.progress,
+                "done_count": sum(1 for item in track.items if item.status == "done"),
+                "total_count": len(track.items),
+            }
+            for track in tracks
+        ],
+    }
+
+
 def ring_data(db: Session) -> list[dict]:
     tasks_total = _count(db, Task, Task.archived.is_(False))
     tasks_done = _count(db, Task, Task.archived.is_(False), Task.status == "done")
@@ -134,8 +189,7 @@ def ring_data(db: Session) -> list[dict]:
     books_done = _count(db, Book, Book.status == "finished")
     places_total = _count(db, Place)
     places_visited = _count(db, Place, Place.visited.is_(True))
-    video = db.scalar(select(LearningTrack).where(LearningTrack.category == "video"))
-    music = db.scalar(select(LearningTrack).where(LearningTrack.category == "music"))
+    learning = learning_summary(db)
 
     def pct(done: int, total: int) -> int:
         return round(done * 100 / total) if total else 0
@@ -154,16 +208,10 @@ def ring_data(db: Session) -> list[dict]:
             "detail": f"{papers_read}/{papers_total}",
         },
         {
-            "key": "video",
-            "label": "AI 视频",
-            "value": video.progress if video else 0,
-            "detail": f"{video.progress if video else 0}%",
-        },
-        {
-            "key": "music",
-            "label": "AI 音乐",
-            "value": music.progress if music else 0,
-            "detail": f"{music.progress if music else 0}%",
+            "key": "learning",
+            "label": "业余学习",
+            "value": learning["progress"],
+            "detail": f"{learning['done_count']}/{learning['total_count']} 项完成",
         },
         {
             "key": "reading",
@@ -303,14 +351,10 @@ def weekly_review_payload(db: Session) -> dict:
 def dashboard_context(db: Session) -> dict:
     """一次性组装首页所需全部数据。"""
     completion = week_completion(db)
-    today_dt_start = datetime.combine(today(), time.min)
-    today_done = _count(
-        db,
-        Task,
-        Task.completed_at.is_not(None),
-        Task.completed_at >= today_dt_start,
-        Task.completed_at < today_dt_start + timedelta(days=1),
-    )
+    current = today()
+    today_dt_start = datetime.combine(current, time.min)
+    today_done = activity_counts(db, current, current).get(current, 0)
+    learning = learning_summary(db)
 
     papers = today_papers(db)
     research_stats = {
@@ -342,8 +386,6 @@ def dashboard_context(db: Session) -> dict:
         "goals": db.scalars(select(Goal).order_by(Goal.id)).all(),
         "archived": _count(db, Task, Task.archived.is_(True)),
     }
-    current = today()
-
     return {
         "stats": {
             "completion_rate": completion["rate"],
@@ -360,11 +402,13 @@ def dashboard_context(db: Session) -> dict:
             "papers": papers[:3],
             "video": track_summary(db, "video"),
             "music": track_summary(db, "music"),
+            "learning": learning,
         },
         "research": {
             "papers": papers,
             "stats": research_stats,
         },
+        "learning": learning,
         "video": track_summary(db, "video"),
         "music": track_summary(db, "music"),
         "reading": {

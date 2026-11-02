@@ -16,11 +16,37 @@ PAPER_SUMMARY = """请用 2-3 句中文总结下面这篇论文，面向大模�
 摘要：{abstract}
 """
 
+PAPER_SUMMARY_BILINGUAL = """请阅读下面这篇论文，输出中文标题与中文摘要，面向大模型方向研究者。
+
+要求：
+- title_zh：准确、简洁的中文标题，不要直译腔，不超过 40 字
+- summary：2-3 句中文。第一句核心问题与方法，第二句关键结果或贡献，最后一句值得阅读的理由
+- 严格只输出 JSON，不要 Markdown 代码块，不要额外解释
+- 格式：{{"title_zh": "中文标题", "summary": "中文摘要"}}
+
+标题：{title}
+作者：{authors}
+摘要：{abstract}
+"""
+
 NEWS_SUMMARY = """请用一句话（不超过 60 字）精炼这条 AI 前沿资讯，保留关键信息，不要评价。
 
 标题：{title}
 来源：{source}
 内容：{content}
+"""
+
+NEWS_TRANSLATE = """请把下面这条 AI 前沿资讯翻译成简体中文，面向中文读者。
+
+要求：
+- title_zh：准确、简洁的中文标题，不要直译腔，不超过 60 字
+- summary_zh：2-3 句中文摘要，保留关键信息，可以适当精炼原文
+- 严格只输出 JSON，不要 Markdown 代码块，不要额外解释
+- 格式：{{"title_zh": "中文标题", "summary_zh": "中文摘要"}}
+
+标题：{title}
+来源：{source}
+摘要：{summary}
 """
 
 DAILY_DIGEST = """你是 AI 前沿资讯编辑。请基于以下今日条目，生成一份中文简报：

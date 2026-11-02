@@ -1,4 +1,7 @@
-<div id="news-content" class="stack">
+{% from "components/pagination.html" import pager %}
+
+<div id="news-content" class="stack"
+     data-refresh-url="/news/content{% if request.url.query %}?{{ request.url.query }}{% endif %}">
   {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
@@ -9,7 +12,9 @@
         <h2>{{ latest_digest.title }}</h2>
         <p class="panel-sub">{{ latest_digest.item_count }} 条资讯 · 生成于 {{ latest_digest.created_at|dt }}</p>
       </div>
-      <span class="badge badge-accent">AI 简报</span>
+      <button class="badge badge-accent" type="button"
+              data-modal-url="/news/digests/{{ latest_digest.id }}/detail"
+              data-modal-title="简报详情">AI 简报</button>
     </header>
     <div class="prose">{{ latest_digest.content|md }}</div>
   </section>
@@ -17,22 +22,45 @@
 
   <section class="panel">
     <header class="panel-head">
-      <div><h2>资讯时间线</h2><p class="panel-sub">当前筛选 {{ total }} 条</p></div>
+      <div><h2>资讯时间线</h2><p class="panel-sub">当前筛选 {{ page_data.total }} 条，每页 {{ page_data.per_page }} 条</p></div>
     </header>
 
     {% for group in timeline %}
     <div class="timeline-group">
       <h3 class="timeline-date">{{ group.date|d('%Y 年 %m 月 %d 日') }}</h3>
-      <div class="timeline-items">
+      <div class="list-grid">
         {% for item in group.entries %}
-        {% include "partials/news_item.html" %}
+        {% include "partials/news_card.html" %}
         {% endfor %}
       </div>
     </div>
     {% else %}
     <div class="empty-panel">
-      <p>没有匹配的资讯。点击「抓取最新资讯」聚合订阅源，或调整搜索条件。</p>
+      <p>没有匹配的资讯。点击「抓取最新资讯」聚合订阅源，或调整筛选条件。</p>
     </div>
     {% endfor %}
+
+    {{ pager(page_data, 'news-content', request, 'page', '/news/content') }}
+  </section>
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>历史简报</h2><p class="panel-sub">共 {{ digest_page.total }} 份，每页 {{ digest_page.per_page }} 份</p></div>
+    </header>
+    <div class="digest-history">
+      {% for digest in digest_page['items'] %}
+      <button class="digest-history-item digest-button" type="button"
+              data-modal-url="/news/digests/{{ digest.id }}/detail" data-modal-title="简报详情">
+        <span class="badge badge-accent">{{ digest.digest_date|d('%m-%d') }}</span>
+        <span>
+          <strong>{{ digest.title }}</strong>
+          <p>{{ digest.item_count }} 条资讯 · {{ digest.created_at|dt }}</p>
+        </span>
+      </button>
+      {% else %}
+      <p class="empty-inline">还没有历史简报。点击「生成今日简报」创建第一份。</p>
+      {% endfor %}
+    </div>
+    {{ pager(digest_page, 'news-content', request, 'digest_page', '/news/content') }}
   </section>
 </div>

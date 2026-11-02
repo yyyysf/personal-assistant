@@ -12,6 +12,10 @@ from src.api.deps import get_db
 from src.api.schemas import (
     BookCreate,
     BookUpdate,
+    CategoryCreate,
+    CategoryUpdate,
+    FeedSourceCreate,
+    FeedSourceUpdate,
     GoalCreate,
     LearningItemCreate,
     LearningItemUpdate,
@@ -42,6 +46,7 @@ from src.api.serializers import (
 )
 from src.core.config import settings
 from src.core.stats import dashboard_context, ring_data, week_completion
+from src.core.taxonomy import CATEGORY_MODEL, all_tags, clear_category, rename_category
 from src.core.time_utils import today
 from src.core.xhs import XhsParseError, import_notes
 from src.core.zotero import ZoteroError, import_paper
@@ -49,6 +54,8 @@ from src.llm.assistant import generate_learning_plan, summarize_paper
 from src.mcp_host.manager import MCPHostError, mcp_host
 from src.models import (
     Book,
+    Category,
+    FeedSource,
     Goal,
     LearningItem,
     LearningLog,
@@ -106,6 +113,151 @@ def system_status() -> dict:
             "mcp": mcp_host.status(),
         }
     )
+
+
+@router.get("/categories")
+def list_categories(scope: str = Query(""), db: Session = Depends(get_db)) -> dict:
+    stmt = select(Category)
+    if scope:
+        stmt = stmt.where(Category.scope == scope)
+    items = db.scalars(stmt.order_by(Category.scope, Category.id)).all()
+    return ok([{"id": item.id, "scope": item.scope, "name": item.name} for item in items])
+
+
+@router.post("/categories")
+def create_category(payload: CategoryCreate, db: Session = Depends(get_db)) -> dict:
+    if payload.scope not in CATEGORY_MODEL:
+        raise HTTPException(status_code=422, detail="分类分组不合法")
+    name = " ".join(payload.name.split())[:60]
+    if not name:
+        raise HTTPException(status_code=422, detail="分类名称不能为空")
+    exists = db.scalar(
+        select(Category).where(Category.scope == payload.scope, Category.name == name)
+    )
+    if exists:
+        raise HTTPException(status_code=409, detail="该分类已存在")
+    item = Category(scope=payload.scope, name=name)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return ok({"id": item.id, "scope": item.scope, "name": item.name}, "分类已创建")
+
+
+@router.patch("/categories/{category_id}")
+def update_category(
+    category_id: int, payload: CategoryUpdate, db: Session = Depends(get_db)
+) -> dict:
+    item = db.get(Category, category_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="分类不存在")
+    name = " ".join(payload.name.split())[:60]
+    if not name:
+        raise HTTPException(status_code=422, detail="分类名称不能为空")
+    exists = db.scalar(
+        select(Category).where(
+            Category.scope == item.scope, Category.name == name, Category.id != category_id
+        )
+    )
+    if exists:
+        raise HTTPException(status_code=409, detail="该分类已存在")
+    rename_category(db, item.scope, item.name, name)
+    item.name = name
+    db.commit()
+    db.refresh(item)
+    return ok({"id": item.id, "scope": item.scope, "name": item.name}, "分类已更新")
+
+
+@router.delete("/categories/{category_id}")
+def delete_category(category_id: int, db: Session = Depends(get_db)) -> dict:
+    item = db.get(Category, category_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="分类不存在")
+    clear_category(db, item.scope, item.name)
+    db.delete(item)
+    db.commit()
+    return ok(message="分类已删除")
+
+
+@router.get("/tags")
+def list_tags(scope: str = Query("task"), db: Session = Depends(get_db)) -> dict:
+    return ok({"scope": scope, "tags": all_tags(db, scope)})
+
+
+@router.get("/feed-sources")
+def list_feed_sources(db: Session = Depends(get_db)) -> dict:
+    items = db.scalars(select(FeedSource).order_by(FeedSource.id)).all()
+    return ok(
+        [
+            {
+                "id": item.id,
+                "name": item.name,
+                "url": item.url,
+                "enabled": item.enabled,
+            }
+            for item in items
+        ]
+    )
+
+
+def _clean_feed_url(value: str) -> str:
+    url = value.strip()
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=422, detail="订阅源地址必须以 http:// 或 https:// 开头")
+    return url[:800]
+
+
+@router.post("/feed-sources")
+def create_feed_source(payload: FeedSourceCreate, db: Session = Depends(get_db)) -> dict:
+    url = _clean_feed_url(payload.url)
+    exists = db.scalar(select(FeedSource).where(FeedSource.url == url))
+    if exists:
+        raise HTTPException(status_code=409, detail="该订阅源已存在")
+    item = FeedSource(name=payload.name.strip()[:120], url=url, enabled=payload.enabled)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return ok(
+        {"id": item.id, "name": item.name, "url": item.url, "enabled": item.enabled},
+        "订阅源已添加",
+    )
+
+
+@router.patch("/feed-sources/{source_id}")
+def update_feed_source(
+    source_id: int, payload: FeedSourceUpdate, db: Session = Depends(get_db)
+) -> dict:
+    item = db.get(FeedSource, source_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="订阅源不存在")
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("url"):
+        url = _clean_feed_url(data["url"])
+        exists = db.scalar(
+            select(FeedSource).where(FeedSource.url == url, FeedSource.id != source_id)
+        )
+        if exists:
+            raise HTTPException(status_code=409, detail="该订阅源已存在")
+        item.url = url
+    if "name" in data and data["name"] is not None:
+        item.name = data["name"].strip()[:120]
+    if "enabled" in data and data["enabled"] is not None:
+        item.enabled = data["enabled"]
+    db.commit()
+    db.refresh(item)
+    return ok(
+        {"id": item.id, "name": item.name, "url": item.url, "enabled": item.enabled},
+        "订阅源已更新",
+    )
+
+
+@router.delete("/feed-sources/{source_id}")
+def delete_feed_source(source_id: int, db: Session = Depends(get_db)) -> dict:
+    item = db.get(FeedSource, source_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="订阅源不存在")
+    db.delete(item)
+    db.commit()
+    return ok(message="订阅源已删除")
 
 
 @router.get("/dashboard/stats")

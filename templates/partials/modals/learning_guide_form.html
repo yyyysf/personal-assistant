@@ -1,0 +1,35 @@
+<form class="stack-form" hx-post="/learning/{{ category }}/guide"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>路线标题</span>
+    <input type="text" name="title" maxlength="200"
+           value="{{ track.title or category_label }}" placeholder="{{ category_label }}">
+  </label>
+
+  <label class="field">
+    <span>路线说明</span>
+    <textarea name="description" rows="3"
+              placeholder="这条学习路线的目标、范围和节奏">{{ track.description }}</textarea>
+  </label>
+
+  <div class="field">
+    <span>引导文档链接（可添加多个）</span>
+    <div class="url-list" x-data='urlList({{ guide_urls|tojson }})'>
+      <template x-for="(url, index) in urls" :key="index">
+        <div class="url-row">
+          <input class="input" type="url" name="guide_urls" x-model="urls[index]"
+                 maxlength="600" placeholder="https://…">
+          <button class="btn btn-tiny btn-ghost" type="button" @click="remove(index)">移除</button>
+        </div>
+      </template>
+      <button class="btn btn-tiny btn-ghost" type="button" @click="add()">+ 添加链接</button>
+    </div>
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">保存路线</button>
+  </div>
+</form>

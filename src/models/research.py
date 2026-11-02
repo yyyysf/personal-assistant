@@ -25,6 +25,17 @@ class Paper(Base, TimestampMixin):
     tags: Mapped[str] = mapped_column(String(300), default="")
     read_status: Mapped[str] = mapped_column(String(20), default="unread")
     published_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    title_zh: Mapped[str] = mapped_column(String(500), default="")
+    favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [tag.strip() for tag in self.tags.split(",") if tag.strip()]
+
+    @property
+    def display_title(self) -> str:
+        return self.title_zh or self.title
 
     notes: Mapped[list["PaperNote"]] = relationship(
         back_populates="paper", cascade="all, delete-orphan"

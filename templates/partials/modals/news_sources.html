@@ -1,0 +1,58 @@
+<section class="stack" id="news-sources">
+  <p class="muted-sm">管理数据库中的订阅源，抓取时会与 .env 中的订阅源合并去重。</p>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+  <div class="category-rows">
+    {% for source in feed_sources %}
+    <div class="source-row">
+      <form class="source-edit"
+            hx-post="/news/sources/{{ source.id }}/edit"
+            hx-target="#news-sources" hx-swap="outerHTML">
+        <input type="text" name="name" value="{{ source.name }}" maxlength="120" placeholder="名称" aria-label="订阅源名称">
+        <input type="url" name="url" value="{{ source.url }}" maxlength="800" required placeholder="https://…" aria-label="订阅地址">
+        <label class="check-line">
+          <input type="checkbox" name="enabled" value="1" {{ 'checked' if source.enabled }}>启用
+        </label>
+        <button class="btn btn-tiny btn-ghost" type="submit">保存</button>
+      </form>
+      <button class="btn btn-tiny btn-ghost danger-text" type="button"
+              hx-post="/news/sources/{{ source.id }}/delete"
+              hx-target="#news-sources" hx-swap="outerHTML"
+              hx-confirm="删除订阅源「{{ source.name or source.url }}」？">删除</button>
+    </div>
+    {% else %}
+    <p class="empty-inline">还没有数据库订阅源，先在下方添加一个。</p>
+    {% endfor %}
+  </div>
+
+  <form class="stack-form" hx-post="/news/sources/new" hx-target="#news-sources" hx-swap="outerHTML">
+    <div class="field-row">
+      <label class="field">
+        <span>名称</span>
+        <input type="text" name="name" maxlength="120" placeholder="例如：Hacker News">
+      </label>
+      <label class="field">
+        <span>订阅地址</span>
+        <input type="url" name="url" maxlength="800" required placeholder="https://example.com/feed.xml">
+      </label>
+    </div>
+    <label class="check-line">
+      <input type="checkbox" name="enabled" value="1" checked>添加后启用
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-modal-close>关闭</button>
+      <button class="btn btn-primary" type="submit">添加订阅源</button>
+    </div>
+  </form>
+
+  <div>
+    <p class="form-section-title">.env 内置订阅源（只读）</p>
+    <ul class="check-list">
+      {% for url in env_feeds %}
+      <li class="muted-sm">{{ url }}</li>
+      {% else %}
+      <li class="muted-sm">暂无</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>

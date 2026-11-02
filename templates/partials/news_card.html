@@ -1,0 +1,35 @@
+<article
+  class="list-card news-card"
+  id="news-item-{{ item.id }}"
+  data-detail-url="/news/items/{{ item.id }}/detail"
+  data-detail-title="资讯详情">
+  <div class="hover-actions">
+    <button class="icon-btn" type="button" title="{{ '取消收藏' if item.favorite else '收藏' }}"
+            hx-post="/news/items/{{ item.id }}/favorite" hx-swap="none">{{ '★' if item.favorite else '☆' }}</button>
+    <button class="icon-btn" type="button" title="删除资讯"
+            hx-post="/news/items/{{ item.id }}/delete" hx-swap="none"
+            hx-confirm="删除这条资讯？">✕</button>
+  </div>
+
+  <div class="news-head">
+    <span class="badge">{{ item.source }}</span>
+    {% if item.favorite %}<span class="badge badge-accent">★ 收藏</span>{% endif %}
+    <span class="row-meta">{{ (item.published_at or item.fetched_at)|dt }}</span>
+  </div>
+
+  <h4>{{ item.display_title }}</h4>
+  {% if item.title_zh %}<p class="paper-title-en">{{ item.title }}</p>{% endif %}
+  {% if item.display_summary %}
+  <p class="news-summary clamp-3">{{ item.display_summary }}</p>
+  {% endif %}
+
+  <div class="news-actions">
+    <a class="btn btn-tiny btn-ghost" href="{{ item.link }}" target="_blank" rel="noopener">原文 ↗</a>
+    {% if item.comment_url %}
+    <a class="btn btn-tiny btn-ghost" href="{{ item.comment_url }}" target="_blank" rel="noopener">评论 ↗</a>
+    {% endif %}
+    <form hx-post="/news/items/{{ item.id }}/favorite" hx-swap="none">
+      <button class="btn btn-tiny" type="submit">{{ '取消收藏' if item.favorite else '收藏' }}</button>
+    </form>
+  </div>
+</article>

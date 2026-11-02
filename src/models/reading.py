@@ -1,6 +1,8 @@
 """小红书收藏与书单模型（第一阶段为半自动 JSON 导入）。"""
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db import Base, TimestampMixin
@@ -32,8 +34,15 @@ class Book(Base, TimestampMixin):
     notes: Mapped[str] = mapped_column(Text, default="")
     resource_url: Mapped[str] = mapped_column(String(600), default="")
     recommended_by: Mapped[str] = mapped_column(String(200), default="")
+    category: Mapped[str] = mapped_column(String(60), default="")
+    tags: Mapped[str] = mapped_column(String(200), default="")
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     source_note_id: Mapped[int | None] = mapped_column(
         ForeignKey("reading_notes.id"), nullable=True
     )
 
     source_note: Mapped[ReadingNote | None] = relationship(back_populates="books")
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [tag.strip() for tag in self.tags.split(",") if tag.strip()]

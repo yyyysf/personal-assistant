@@ -1,11 +1,22 @@
 """动态学习路线：AI 视频 / AI 音乐两个子模块共享同一套模型。"""
 
+import json
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db import Base, TimestampMixin
+
+
+def _json_urls(raw: str) -> list[str]:
+    try:
+        data = json.loads(raw or "[]")
+    except (TypeError, ValueError):
+        return [raw] if raw else []
+    if isinstance(data, str):
+        return [data] if data else []
+    return [str(item).strip() for item in data if str(item).strip()]
 
 
 class LearningTrack(Base, TimestampMixin):
@@ -16,6 +27,11 @@ class LearningTrack(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), default="")
     description: Mapped[str] = mapped_column(Text, default="")
     progress: Mapped[int] = mapped_column(Integer, default=0)
+    guide_urls: Mapped[str] = mapped_column(Text, default="[]")
+
+    @property
+    def guide_url_list(self) -> list[str]:
+        return _json_urls(self.guide_urls)
 
     items: Mapped[list["LearningItem"]] = relationship(
         back_populates="track", cascade="all, delete-orphan"
@@ -33,12 +49,17 @@ class LearningItem(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     resource_url: Mapped[str] = mapped_column(String(600), default="")
+    resource_urls: Mapped[str] = mapped_column(Text, default="[]")
     status: Mapped[str] = mapped_column(String(20), default="todo")
     mastery: Mapped[int] = mapped_column(Integer, default=0)
     scheduled_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     track: Mapped[LearningTrack] = relationship(back_populates="items")
+
+    @property
+    def resource_url_list(self) -> list[str]:
+        return _json_urls(self.resource_urls) or ([self.resource_url] if self.resource_url else [])
 
 
 class LearningLog(Base, TimestampMixin):

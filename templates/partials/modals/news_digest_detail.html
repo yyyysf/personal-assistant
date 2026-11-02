@@ -1,0 +1,10 @@
+<section class="stack">
+  <header>
+    <h3>{{ digest.title }}</h3>
+    <p class="muted-sm">{{ digest.digest_date|d }} · {{ digest.item_count }} 条资讯 · 生成于 {{ digest.created_at|dt }}</p>
+  </header>
+  <div class="prose">{{ digest.content|md }}</div>
+  <div class="modal-actions">
+    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+  </div>
+</section>

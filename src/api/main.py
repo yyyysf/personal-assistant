@@ -11,7 +11,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routes import api_v1, dashboard, learning, news, reading, research, todo, travel
+from src.api.routes import (
+    api_v1,
+    categories,
+    dashboard,
+    learning,
+    news,
+    reading,
+    research,
+    todo,
+    travel,
+)
 from src.core.config import BASE_DIR, settings
 from src.core.db import init_db
 from src.core.logging import get_logger, setup_logging
@@ -44,7 +54,12 @@ app = FastAPI(
 static_dir = Path(BASE_DIR) / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+uploads_dir = Path(BASE_DIR) / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
 app.include_router(dashboard.router)
+app.include_router(categories.router)
 app.include_router(todo.router)
 app.include_router(research.router)
 app.include_router(reading.router)
