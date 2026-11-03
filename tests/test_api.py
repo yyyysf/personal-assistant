@@ -61,6 +61,7 @@ def test_all_pages_render(client):
         "/learning/video",
         "/learning/music",
         "/travel",
+        "/schedule",
     ):
         response = client.get(path)
         assert response.status_code == 200, path

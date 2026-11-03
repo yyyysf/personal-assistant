@@ -1,0 +1,83 @@
+{% macro cal_link(content_url, page_url, label) -%}
+<a class="btn btn-tiny btn-ghost" href="{{ page_url }}" hx-get="{{ content_url }}"
+   hx-target="#schedule-content" hx-swap="outerHTML" hx-push-url="{{ page_url }}">{{ label }}</a>
+{%- endmacro %}
+
+{% set content_base = '/schedule/content?tab=timeline&view=' ~ view ~ '&date=' %}
+{% set page_base = '/schedule?tab=timeline&view=' ~ view ~ '&date=' %}
+{% set today_url = today.isoformat() %}
+
+<div class="schedule-layout">
+  <section class="panel schedule-panel">
+    <header class="panel-head schedule-toolbar">
+      <div class="schedule-nav">
+        {{ cal_link(content_base ~ prev_date.isoformat(), page_base ~ prev_date.isoformat(),
+                    '‹ 上一' ~ ('周' if view == 'week' else '天')) }}
+        {{ cal_link(content_base ~ today_url, page_base ~ today_url, '今天') }}
+        {{ cal_link(content_base ~ next_date.isoformat(), page_base ~ next_date.isoformat(),
+                    '下一' ~ ('周' if view == 'week' else '天') ~ ' ›') }}
+      </div>
+      <div class="schedule-range">
+        <strong>{{ range_start|d }} — {{ range_end|d }}</strong>
+        <span class="schedule-view-switch">
+          <a class="{{ 'active' if view == 'week' }}" href="{{ page_base ~ anchor.isoformat() }}"
+             hx-get="{{ content_base ~ anchor.isoformat() }}" hx-target="#schedule-content"
+             hx-swap="outerHTML" hx-push-url="{{ page_base ~ anchor.isoformat() }}">周</a>
+          <a class="{{ 'active' if view == 'day' }}"
+             href="/schedule?tab=timeline&view=day&date={{ anchor.isoformat() }}"
+             hx-get="/schedule/content?tab=timeline&view=day&date={{ anchor.isoformat() }}"
+             hx-target="#schedule-content" hx-swap="outerHTML"
+             hx-push-url="/schedule?tab=timeline&view=day&date={{ anchor.isoformat() }}">日</a>
+        </span>
+      </div>
+    </header>
+
+    <div class="cal-shell">
+      <div class="cal-grid{{ ' is-day-view' if view == 'day' }}" style="--days: {{ days|length }}">
+        <div class="cal-corner"></div>
+        {% for day in days %}
+        <div class="cal-head{{ ' is-today' if day.is_today }}">
+          <span class="cal-weekday">{{ day.weekday }}</span>
+          <strong>{{ day.label }}</strong>
+        </div>
+        {% endfor %}
+
+        <div class="cal-time-col" aria-hidden="true">
+          {% for hour in range(24) %}<span class="cal-time-label">{{ '%02d:00'|format(hour) }}</span>{% endfor %}
+        </div>
+
+        {% for day in days %}
+        <div class="cal-day" data-date="{{ day.date.isoformat() }}">
+          {% for hour in range(24) %}
+          <button type="button" class="cal-slot" data-date="{{ day.date.isoformat() }}"
+                  data-hour="{{ hour }}" aria-label="{{ day.date }} {{ hour }} 点新增任务"></button>
+          {% endfor %}
+
+          {% for seg in day.segments %}
+          <article class="cal-task{{ ' is-done' if seg.task.is_done }}"
+                   style="top: {{ seg.top }}%; height: {{ seg.height }}%; left: {{ seg.left }}%; width: {{ seg.width }}%; --project-color: {{ seg.color }};"
+                   data-detail-url="/schedule/tasks/{{ seg.task.id }}/detail"
+                   data-detail-title="任务详情"
+                   title="{{ seg.time_label }} · {{ seg.task.title }}">
+            <span class="cal-task-title">{{ seg.task.title }}</span>
+            <span class="cal-task-meta">
+              <span>{{ seg.time_label }}</span>
+              {% if seg.task.subproject %}<span class="cal-task-sub">{{ seg.task.subproject.name }}</span>{% endif %}
+            </span>
+          </article>
+          {% endfor %}
+
+          {% if show_now and day.is_today %}
+          <div class="cal-now-line" style="top: {{ now_pct }}%;"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <p class="footnote">点击空白时段新增任务，点击任务块查看详情或开始专注计时；已完成记录会以半透明块保留在时间轴上。</p>
+  </section>
+
+  <aside class="schedule-side">
+    {% include "partials/schedule_side.html" %}
+  </aside>
+</div>

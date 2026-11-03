@@ -1,0 +1,103 @@
+<section class="panel">
+  <header class="panel-head">
+    <div>
+      <h2>时间统计看板</h2>
+      <p class="panel-sub">仅统计已完成的专注记录，按开始日期归档</p>
+    </div>
+    <span class="panel-hint">{{ stats.date_from }} — {{ stats.date_to }}</span>
+  </header>
+
+  <form class="filter-bar stats-filter" hx-get="/schedule/content" hx-target="#schedule-content"
+        hx-swap="outerHTML" hx-trigger="change, submit" hx-push-url="/schedule?tab=stats">
+    <input type="hidden" name="tab" value="stats">
+    <label class="field">
+      <span>范围</span>
+      <select name="range">
+        {% for value, label in [('week', '本周'), ('month', '本月'), ('custom', '自定义')] %}
+        <option value="{{ value }}" {{ 'selected' if stats_filters.range == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>开始日期</span>
+      <input type="date" name="date_from" value="{{ stats_filters.date_from }}">
+    </label>
+    <label class="field">
+      <span>结束日期</span>
+      <input type="date" name="date_to" value="{{ stats_filters.date_to }}">
+    </label>
+    <label class="field">
+      <span>项目</span>
+      <select name="project_id">
+        <option value="">全部项目</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"
+                {{ 'selected' if stats_filters.project_id|string == project.id|string }}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">统计</button>
+    </div>
+  </form>
+
+  <div class="stats-cards">
+    <article class="stat-card">
+      <span class="stat-label">总专注</span>
+      <strong class="stat-value">{{ stats.total_hours }}<small>h</small></strong>
+      <span class="stat-sub">{{ stats.record_count }} 条 Done 记录</span>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">日均专注</span>
+      <strong class="stat-value">
+        {{ (stats.total_hours / ((stats.labels|length) or 1))|round(2) }}<small>h</small>
+      </strong>
+      <span class="stat-sub">共 {{ stats.labels|length }} 天</span>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">最忙的一天</span>
+      <strong class="stat-value">
+        {{ stats.busiest_day.strftime('%m/%d') if stats.busiest_day else '—' }}
+      </strong>
+      <span class="stat-sub">{{ (stats.busiest_seconds / 3600)|round(2) }} 小时</span>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">参与项目</span>
+      <strong class="stat-value">{{ stats.projects|length }}<small>个</small></strong>
+      <span class="stat-sub">未分类记录也会单独统计</span>
+    </article>
+  </div>
+
+  <div class="stats-grid">
+    <div class="chart-card">
+      <h3>项目占比</h3>
+      <div class="chart-box"><canvas id="schedule-pie"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>每日专注（小时）</h3>
+      <div class="chart-box"><canvas id="schedule-bar"></canvas></div>
+    </div>
+  </div>
+
+  <script type="application/json" id="schedule-stats-data">{{ stats.chart_data|tojson }}</script>
+
+  <div class="stats-table-wrap">
+    <table class="stats-table">
+      <thead>
+        <tr><th>项目</th><th>子项目</th><th>记录数</th><th>时长</th></tr>
+      </thead>
+      <tbody>
+        {% for row in stats.table %}
+        <tr>
+          <td><span class="project-dot" style="--project-color: {{ row.color }}"></span>{{ row.project }}</td>
+          <td>{{ row.subproject or '—' }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.hours }} h</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty-inline">当前范围内没有已完成记录。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

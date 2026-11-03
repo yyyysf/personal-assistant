@@ -1,0 +1,46 @@
+<form class="stack-form" hx-post="/schedule/records/{{ record.id }}/edit"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>记录名称</span>
+    <input type="text" name="title" maxlength="200" required value="{{ values.title }}">
+  </label>
+
+  <label class="field">
+    <span>项目</span>
+    <select name="project_id">
+      <option value="">未分类</option>
+      {% for project in projects %}
+      <option value="{{ project.id }}"
+              {{ 'selected' if values.project_id|string == project.id|string }}>{{ project.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <div class="field-row field-row-3">
+    <label class="field">
+      <span>日期</span>
+      <input type="date" name="date" required value="{{ values.date }}">
+    </label>
+    <label class="field">
+      <span>开始时间</span>
+      <input type="time" name="start_time" required value="{{ values.start_time }}">
+    </label>
+    <label class="field">
+      <span>结束时间</span>
+      <input type="time" name="end_time" required value="{{ values.end_time }}">
+    </label>
+  </div>
+  <p class="footnote">保存后按新的起止时间重新计算专注时长。</p>
+
+  <label class="field">
+    <span>备注（可选）</span>
+    <textarea name="note" rows="3">{{ values.note }}</textarea>
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">保存修改</button>
+  </div>
+</form>
