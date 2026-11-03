@@ -1,0 +1,26 @@
+<div id="schedule-content" class="stack"
+     data-tab="{{ tab }}" data-view="{{ view }}" data-anchor="{{ anchor.isoformat() }}"
+     data-refresh-url="/schedule/content{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+  <nav class="view-tabs schedule-tabs" aria-label="日程视图">
+    <a href="/schedule?tab=timeline" class="{{ 'is-active' if tab == 'timeline' }}"
+       hx-get="/schedule/content?tab=timeline" hx-target="#schedule-content"
+       hx-swap="outerHTML" hx-push-url="/schedule?tab=timeline">时间轴日历</a>
+    <a href="/schedule?tab=timer" class="{{ 'is-active' if tab == 'timer' }}"
+       hx-get="/schedule/content?tab=timer" hx-target="#schedule-content"
+       hx-swap="outerHTML" hx-push-url="/schedule?tab=timer">专注计时台</a>
+    <a href="/schedule?tab=stats" class="{{ 'is-active' if tab == 'stats' }}"
+       hx-get="/schedule/content?tab=stats" hx-target="#schedule-content"
+       hx-swap="outerHTML" hx-push-url="/schedule?tab=stats">时间统计看板</a>
+  </nav>
+
+  {% if notice %}<div class="alert alert-success">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  {% if tab == 'timer' %}
+    {% include "partials/schedule_timer.html" %}
+  {% elif tab == 'stats' %}
+    {% include "partials/schedule_stats.html" %}
+  {% else %}
+    {% include "partials/schedule_timeline.html" %}
+  {% endif %}
+</div>

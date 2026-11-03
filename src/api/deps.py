@@ -86,6 +86,7 @@ templates.env.globals["current_year"] = today().year
 NAV_GROUPS = [
     {"key": "dashboard", "href": "/", "label": "首页仪表盘", "icon": "◉"},
     {"key": "todo", "href": "/todo", "label": "任务与目标", "icon": "✓"},
+    {"key": "schedule", "href": "/schedule", "label": "日程时间", "icon": "◷"},
     {"key": "research", "href": "/research", "label": "科研论文", "icon": "◈"},
     {"key": "reading", "href": "/reading", "label": "书单阅读", "icon": "▤"},
     {"key": "news", "href": "/news", "label": "前沿资讯", "icon": "◎"},

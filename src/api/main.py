@@ -19,6 +19,7 @@ from src.api.routes import (
     news,
     reading,
     research,
+    schedule,
     todo,
     travel,
 )
@@ -61,6 +62,7 @@ app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 app.include_router(dashboard.router)
 app.include_router(categories.router)
 app.include_router(todo.router)
+app.include_router(schedule.router)
 app.include_router(research.router)
 app.include_router(reading.router)
 app.include_router(news.router)
