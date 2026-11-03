@@ -1,0 +1,122 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "Missing DEPLOY_SSH_KEY or DEPLOY_KNOWN_HOSTS secret." >&2
+            exit 1
+          fi
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/assistant_deploy"
+          chmod 600 "$HOME/.ssh/assistant_deploy"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          : "${DEPLOY_HOST:?Repository variable DEPLOY_HOST is required}"
+          : "${DEPLOY_USER:?Repository variable DEPLOY_USER is required}"
+          ssh -i "$HOME/.ssh/assistant_deploy" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+
+          APP_DIR="/home/ubuntu/personal-assistant"
+          SERVICE="assistant"
+          HEALTH_URL="http://127.0.0.1:8000/api/v1/health"
+          export PATH="$HOME/.local/bin:$PATH"
+
+          cd "$APP_DIR"
+
+          if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
+            echo "ERROR: deployment checkout is not on main; refusing to deploy." >&2
+            exit 1
+          fi
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "ERROR: working tree has uncommitted changes; refusing to deploy." >&2
+            exit 1
+          fi
+
+          PREV_SHA="$(git rev-parse HEAD)"
+          git fetch --prune origin main
+          NEW_SHA="$(git rev-parse origin/main)"
+          if [ "$PREV_SHA" = "$NEW_SHA" ]; then
+            echo "Already at $NEW_SHA; nothing to deploy."
+            exit 0
+          fi
+          echo "Deploying $PREV_SHA -> $NEW_SHA"
+
+          DEPS_CHANGED=0
+          if ! git diff --quiet "$PREV_SHA" "$NEW_SHA" -- pyproject.toml uv.lock; then
+            DEPS_CHANGED=1
+          fi
+
+          health_check() {
+            for _ in $(seq 1 30); do
+              if curl -fsS --max-time 3 "$HEALTH_URL" | grep -Eq '"ok" *: *true'; then
+                return 0
+              fi
+              sleep 2
+            done
+            return 1
+          }
+
+          rollback() {
+            echo "ERROR: deployment failed; rolling back to $PREV_SHA." >&2
+            git reset --hard "$PREV_SHA"
+            if [ "$DEPS_CHANGED" -eq 1 ]; then
+              UV_HTTP_TIMEOUT=180 uv sync --python 3.12 --no-dev --frozen \
+                --index-url https://mirrors.cloud.tencent.com/pypi/simple \
+                || echo "WARNING: uv sync during rollback failed." >&2
+            fi
+            sudo /usr/bin/systemctl restart "$SERVICE" || true
+            if health_check; then
+              echo "Rollback to $PREV_SHA is healthy; old version restored."
+            else
+              echo "ERROR: rollback health check failed; manual intervention required." >&2
+            fi
+            exit 1
+          }
+
+          git merge --ff-only "$NEW_SHA"
+
+          if [ "$DEPS_CHANGED" -eq 1 ]; then
+            echo "Dependencies changed; syncing with uv."
+            UV_HTTP_TIMEOUT=180 uv sync --python 3.12 --no-dev --frozen \
+              --index-url https://mirrors.cloud.tencent.com/pypi/simple \
+              || rollback
+          fi
+
+          sudo /usr/bin/systemctl restart "$SERVICE" || rollback
+          health_check || rollback
+          sudo /usr/bin/systemctl is-active --quiet "$SERVICE" || rollback
+
+          echo "Deployment healthy at $NEW_SHA."
+          REMOTE
