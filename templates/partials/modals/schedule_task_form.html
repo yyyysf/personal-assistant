@@ -1,0 +1,82 @@
+{% set is_edit = task is not none %}
+<form class="stack-form"
+      hx-post="{{ '/schedule/tasks/' ~ task.id ~ '/edit' if is_edit else '/schedule/tasks/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <label class="field">
+    <span>任务名称</span>
+    <input type="text" name="title" maxlength="200" required
+           value="{{ values.title }}" placeholder="例如：整理本周实验数据">
+  </label>
+
+  <div class="field-row">
+    <label class="field">
+      <span>项目</span>
+      <select name="project_id" hx-get="/schedule/subprojects" hx-target="#task-subproject"
+              hx-swap="innerHTML" hx-include="this">
+        <option value="">未分类</option>
+        {% for project in projects %}
+        <option value="{{ project.id }}"
+                {{ 'selected' if values.project_id|string == project.id|string }}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>子项目</span>
+      <select name="subproject_id" id="task-subproject">
+        <option value="">不选择</option>
+        {% for subproject in subprojects %}
+        <option value="{{ subproject.id }}"
+                {{ 'selected' if values.subproject_id|string == subproject.id|string }}>{{ subproject.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <details class="form-details">
+    <summary>新建项目或子项目</summary>
+    <div class="field-row">
+      <label class="field">
+        <span>新项目名称</span>
+        <input type="text" name="new_project_name" maxlength="60"
+               value="{{ values.new_project_name }}" placeholder="留空则使用上方项目">
+      </label>
+      <label class="field">
+        <span>新项目颜色</span>
+        <input type="color" name="new_project_color" value="{{ values.new_project_color }}">
+      </label>
+    </div>
+    <label class="field">
+      <span>新子项目名称</span>
+      <input type="text" name="new_subproject_name" maxlength="60"
+             value="{{ values.new_subproject_name }}" placeholder="在所选或新建项目下创建">
+    </label>
+  </details>
+
+  <div class="field-row field-row-3">
+    <label class="field">
+      <span>日期</span>
+      <input type="date" name="date" required value="{{ values.date }}">
+    </label>
+    <label class="field">
+      <span>开始时间</span>
+      <input type="time" name="start_time" required value="{{ values.start_time }}">
+    </label>
+    <label class="field">
+      <span>结束时间</span>
+      <input type="time" name="end_time" required value="{{ values.end_time }}">
+    </label>
+  </div>
+  <p class="footnote">结束时间早于或等于开始时间时，会自动顺延到次日。</p>
+
+  <label class="field">
+    <span>备注（可选）</span>
+    <textarea name="note" rows="3" placeholder="任务目标、资料链接或注意事项">{{ values.note }}</textarea>
+  </label>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '创建任务' }}</button>
+  </div>
+</form>

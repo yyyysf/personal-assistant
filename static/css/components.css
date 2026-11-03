@@ -266,3 +266,48 @@
   .hover-actions { position: static; opacity: 1; transform: none; margin-bottom: 8px; background: none; padding: 0; }
   .detail-grid { grid-template-columns: 88px 1fr; }
 }
+
+/* ---------- 全局专注计时条 ---------- */
+.timer-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm);
+  font-size: 13px;
+}
+.timer-banner[hidden] { display: none; }
+.timer-banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: timer-pulse 1.4s ease-in-out infinite;
+}
+.timer-banner.is-paused .timer-banner-dot { background: var(--warning); animation: none; }
+.timer-banner-label { color: var(--muted); white-space: nowrap; }
+.timer-banner strong { font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+.timer-banner-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+#timer-banner-open { margin-left: auto; }
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@media (max-width: 760px) {
+  .timer-banner { flex-wrap: wrap; padding: 6px 12px; font-size: 12px; }
+  .timer-banner-title { flex: 1 1 100%; order: 5; }
+  #timer-banner-open { margin-left: auto; }
+}

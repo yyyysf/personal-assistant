@@ -1,0 +1,72 @@
+<div class="timer-layout">
+  <section class="panel timer-panel">
+    <header class="panel-head">
+      <div>
+        <h2>专注计时台</h2>
+        <p class="panel-sub">选择计划任务，或直接输入临时任务；结束后自动落到时间轴</p>
+      </div>
+      <span class="panel-hint">计时状态保存在本机浏览器</span>
+    </header>
+
+    <div class="timer-setup">
+      <label class="field">
+        <span>计划任务</span>
+        <select id="timer-task-select">
+          <option value="">— 使用临时任务 —</option>
+          {% for task in timer_tasks %}
+          <option value="{{ task.id }}"
+                  data-title="{{ task.title }}"
+                  data-project-id="{{ task.project_id or '' }}"
+                  data-project-name="{{ task.project.name if task.project else '' }}"
+                  data-subproject-id="{{ task.subproject_id or '' }}"
+                  data-subproject-name="{{ task.subproject.name if task.subproject else '' }}"
+                  data-note="{{ task.note }}">
+            {{ task.title }}{% if task.project %} · {{ task.project.name }}{% endif %}
+            {% if task.start_at %}（{{ task.start_at|dt('%m-%d %H:%M') }}）{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>临时任务名称</span>
+          <input id="timer-temp-title" type="text" maxlength="200" placeholder="例如：整理实验数据">
+        </label>
+        <label class="field">
+          <span>临时任务项目</span>
+          <select id="timer-temp-project">
+            <option value="">未分类</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}" data-color="{{ project.color }}">{{ project.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>本次备注（可选）</span>
+        <textarea id="timer-note" rows="2" placeholder="记录这次专注的产出或卡点"></textarea>
+      </label>
+    </div>
+
+    <div class="timer-display-wrap">
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <p class="timer-status" id="timer-status">准备开始</p>
+    </div>
+
+    <div class="timer-actions">
+      <button class="btn btn-primary" type="button" id="timer-start">开始</button>
+      <button class="btn btn-ghost" type="button" id="timer-pause" disabled>暂停</button>
+      <button class="btn btn-ghost danger-text" type="button" id="timer-finish" disabled>结束并保存</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head">
+      <div><h2>最近 Done 记录</h2><p class="panel-sub">完成即记录，支持编辑与删除</p></div>
+      <span class="panel-hint">每页 {{ records_page.per_page }} 条</span>
+    </header>
+    {% include "partials/schedule_records.html" %}
+  </section>
+</div>
