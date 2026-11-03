@@ -10,17 +10,17 @@
 
 # 分支 & 上线流程规范
 分支划分：
-- main：生产线上分支，受保护，禁止直接push，仅通过MR合并更新；合并main自动触发GitLab CI流水线，部署到腾讯轻量服务器
+- main：生产线上分支，开启分支保护，禁止直接push，仅通过PR合并更新；合并main自动触发GitHub Actions流水线，部署到腾讯轻量服务器
 - dev：开发分支，所有功能迭代、UI修改、接口变更全部在dev分支开发
 
 强制流程：
 1. 所有开发、代码改动在 dev 分支进行；
 2. 改动完成后，本地启动完整服务，由我人工测试全部相关功能，确认无BUG、交互符合预期；
-3. 测试通过，提交推送dev，发起 dev → main 的 MR；
-4. MR必须由我手动审阅、手动点击合并，禁止任何自动合并main；
-5. 合并成功触发CI：服务器执行 git pull origin main → systemctl重启assistant.service → 服务存活自检；
-6. CI失败时，保留线上原有版本，不会覆盖坏版本；
-7. 服务器Deploy Key仅用于免密拉取代码；CI使用独立SSH私钥用于流水线远程部署。
+3. 测试通过，提交推送dev，发起 dev → main 的 Pull Request；
+4. PR必须由我手动审阅、手动点击合并，禁止任何自动合并main；
+5. 合并成功触发 GitHub Actions：SSH连上腾讯轻量服务器，执行 git pull origin main → systemctl重启assistant.service → 服务存活自检；
+6. Actions部署任务失败时，保留线上原有版本，不会覆盖坏版本；
+7. 服务器Deploy Key仅用于服务器免密拉取代码；GitHub Actions使用独立SSH私钥用于流水线远程ssh部署。
 
 ## 核心页面：首页总仪表盘（对标参考的Obsidian工位看板）
 首页为默认入口，实现全局汇总视图：
