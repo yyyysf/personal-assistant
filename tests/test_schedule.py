@@ -368,6 +368,38 @@ def test_board_card_shows_single_tag(client):
     assert "乙" not in page.split("单标签卡片")[1].split("</article>")[0]
 
 
+def test_task_card_toggle_done_and_start(client):
+    task_id = _create_todo_task(client, title="打勾任务", tags="测试")
+
+    page = client.get("/todo").text
+    assert "task-check" in page
+    assert 'title="标记完成"' in page
+    assert 'title="开始进行"' in page
+
+    started = client.post(f"/todo/tasks/{task_id}/status", data={"status": "doing"})
+    assert started.status_code == 200
+    with SessionLocal() as db:
+        assert db.get(Task, task_id).status == "doing"
+
+    done = client.post(f"/todo/tasks/{task_id}/status", data={"status": "done"})
+    assert done.status_code == 200
+    assert done.headers.get("HX-Trigger") == '{"list:refresh": true}'
+    with SessionLocal() as db:
+        task = db.get(Task, task_id)
+        assert task.status == "done"
+        assert task.completed_at is not None
+
+    page = client.get("/todo").text
+    assert "task-check" not in page
+    detail = client.get(f"/todo/tasks/{task_id}/detail").text
+    assert "标记为未完成" in detail
+
+    undone = client.post(f"/todo/tasks/{task_id}/status", data={"status": "todo"})
+    assert undone.status_code == 200
+    with SessionLocal() as db:
+        assert db.get(Task, task_id).completed_at is None
+
+
 def test_task_form_is_simplified_with_calendar(client):
     form = client.get("/todo/tasks/new").text
     assert 'name="title"' in form

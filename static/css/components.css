@@ -99,6 +99,7 @@
   background: var(--surface); padding: 3px; border-radius: 10px;
 }
 .list-card:hover .hover-actions, .list-card:focus-within .hover-actions { opacity: 1; transform: none; }
+.task-card:hover .hover-actions, .task-card:focus-within .hover-actions { opacity: 1; transform: none; }
 .list-card-head { display: flex; align-items: flex-start; gap: 10px; padding-right: 76px; }
 .list-card-head h3 { margin: 0; font-size: 1rem; line-height: 1.4; }
 .list-card-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; color: var(--text-2); font-size: 0.82rem; }
