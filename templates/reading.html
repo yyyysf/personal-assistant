@@ -57,35 +57,5 @@
   </div>
 </form>
 
-<div class="split-layout">
-  <div class="split-main">
-    {% include "partials/reading_content.html" %}
-  </div>
-
-  <aside class="split-side">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>阅读闭环</h2><p class="panel-sub">从收藏到真正的输入</p></div>
-      </header>
-      <ol class="step-list">
-        <li><span class="step-num">1</span><div><strong>导入</strong><p>上传小红书收藏 JSON，自动抽取推荐书单。</p></div></li>
-        <li><span class="step-num">2</span><div><strong>归类</strong><p>为书设置分类、标签与阅读状态。</p></div></li>
-        <li><span class="step-num">3</span><div><strong>阅读</strong><p>记录资源链接与个人笔记，标记在读与已读。</p></div></li>
-        <li><span class="step-num">4</span><div><strong>沉淀</strong><p>导出 TXT 书单，随时回顾自己的阅读版图。</p></div></li>
-      </ol>
-    </section>
-
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>版权与范围</h2></div>
-      </header>
-      <ul class="check-list">
-        <li>仅用于个人阅读整理与检索。</li>
-        <li>不实现批量下载、分发电子书。</li>
-        <li>libgen / Gutenberg MCP 作为后续可选检索入口。</li>
-        <li>书籍数据只保存在本地 SQLite。</li>
-      </ul>
-    </section>
-  </aside>
-</div>
+{% include "partials/reading_content.html" %}
 {% endblock %}
