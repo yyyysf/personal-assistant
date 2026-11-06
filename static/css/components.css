@@ -340,6 +340,8 @@
 }
 .news-card h4 { margin: 0; font-size: 1rem; line-height: 1.45; }
 .news-card .news-summary { margin: 0; color: var(--text-2); font-size: 0.88rem; line-height: 1.6; }
+.news-card h4,
+.news-card .news-summary { overflow-wrap: anywhere; }
 .news-card .news-actions { margin-top: 4px; }
 .digest-button {
   width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
