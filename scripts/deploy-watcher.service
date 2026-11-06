@@ -1,0 +1,19 @@
+[Unit]
+Description=Personal Assistant main branch deploy watcher
+Documentation=https://github.com/yyyysf/personal-assistant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/personal-assistant
+# 轮询间隔（秒），改这里后 daemon-reload + restart 生效
+Environment=POLL_INTERVAL=180
+Environment=APP_DIR=/home/ubuntu/personal-assistant
+ExecStart=/bin/bash /home/ubuntu/personal-assistant/scripts/auto_deploy.sh --watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

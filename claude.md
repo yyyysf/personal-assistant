@@ -10,7 +10,7 @@
 
 # 分支 & 上线流程规范
 分支划分：
-- main：生产线上分支，开启分支保护，禁止直接push，仅通过PR合并更新；合并main自动触发GitHub Actions流水线，部署到腾讯轻量服务器
+- main：生产线上分支，开启分支保护，禁止直接push，仅通过PR合并更新
 - dev：开发分支，所有功能迭代、UI修改、接口变更全部在dev分支开发
 
 强制流程：
@@ -18,9 +18,20 @@
 2. 改动完成后，本地启动完整服务，由我人工测试全部相关功能，确认无BUG、交互符合预期；
 3. 测试通过，提交推送dev，发起 dev → main 的 Pull Request；
 4. PR必须由我手动审阅、手动点击合并，禁止任何自动合并main；
-5. 合并成功触发 GitHub Actions：SSH连上腾讯轻量服务器，执行 git pull origin main → systemctl重启assistant.service → 服务存活自检；
-6. Actions部署任务失败时，保留线上原有版本，不会覆盖坏版本；
-7. 服务器Deploy Key仅用于服务器免密拉取代码；GitHub Actions使用独立SSH私钥用于流水线远程ssh部署。
+5. GitHub Actions 只做 CI（ruff lint、格式检查、pytest），不再 SSH 登录服务器部署；
+6. 生产环境由服务器上的 `deploy-watcher.service` 主动轮询：每 3 分钟 `git fetch origin main`，有新 commit 才拉取、同步依赖、执行数据库迁移、重启 `assistant.service` 并做健康检查；
+7. 部署失败（依赖/迁移/重启/健康检查）时自动回滚到上一 commit 并重启旧版本，保持线上可用，失败详情写入服务器项目根目录 `deploy.log`；
+8. 手动强制部署：服务器项目目录执行 `./scripts/auto_deploy.sh --force`；
+9. 服务器 Deploy Key 仅用于服务器免密拉取代码；GitHub Actions 不再持有服务器 SSH 私钥。
+
+## 生产部署（服务器主动拉取模式）
+
+- 流水线角色划分：GitHub Actions = CI only；部署 = 服务器侧 `scripts/auto_deploy.sh`
+- 部署步骤：`git fetch` → 对比 HEAD 与 `origin/main` → 无更新直接退出 → `git merge --ff-only` → `uv sync`（腾讯云 PyPI 镜像）→ `init_db()` 幂等迁移 → 重启 `assistant` → `/api/v1/health` 自检
+- 失败处理：任一步失败即 `git reset --hard` 回旧 commit、重启旧版本；数据库迁移前自动备份到 `data/backups/`
+- 日志：`/home/ubuntu/personal-assistant/deploy.log`；watcher 运行日志 `journalctl -u deploy-watcher -f`
+- 手动回滚：`cd ~/personal-assistant && git reset --hard <上一commit> && sudo systemctl restart assistant`
+- 禁止再新增任何 GitHub Actions SSH 远程部署逻辑
 
 ## 核心页面：首页总仪表盘（对标参考的Obsidian工位看板）
 首页为默认入口，实现全局汇总视图：
