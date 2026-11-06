@@ -1,53 +1,51 @@
 {% extends "base.html" %}
-{% block title %}任务与目标 · Private Assistant{% endblock %}
-{% block page_title %}任务与目标{% endblock %}
-{% block subtitle %}看板视图 · 目标拆解 · 分类与标签 · 完成数据同步仪表盘{% endblock %}
+{% block title %}任务管理 · Private Assistant{% endblock %}
+{% block page_title %}任务管理{% endblock %}
+{% block subtitle %}看板视图 · 标签分类 · 完成数据同步仪表盘{% endblock %}
 
 {% block content %}
 <section class="page-actions">
   <div class="page-actions-copy">
     <h2>把待办变成可执行的下一步</h2>
-    <p>点击「+ 新增」快速记录，点击卡片查看详情；完成状态与目标进度会同步到首页仪表盘。</p>
+    <p>点击「+ 新增任务」快速记录，点击卡片查看详情，拖拽卡片即可切换状态；标签颜色会同步到日程时间轴。</p>
   </div>
   <div class="action-row">
     <button class="btn btn-primary" type="button"
             data-modal-url="/todo/tasks/new" data-modal-title="新增任务">+ 新增任务</button>
     <button class="btn btn-ghost" type="button"
-            data-modal-url="/todo/goals/new" data-modal-title="新增目标">+ 新增目标</button>
-    <button class="btn btn-ghost" type="button"
-            data-modal-url="/categories/task/manage" data-modal-title="分类管理">分类管理</button>
+            data-modal-url="/todo/tags/manage" data-modal-title="标签管理">标签管理</button>
     <form hx-post="/todo/archive" hx-swap="none" hx-confirm="把全部已完成任务移入历史归档？">
       <button class="btn btn-ghost" type="submit">归档已完成</button>
     </form>
   </div>
 </section>
 
-<nav class="view-tabs" aria-label="任务视图">
-  <a href="{{ page_href(request, 'tab', 'board') }}" class="{{ 'is-active' if tab == 'board' }}">任务看板</a>
-  <a href="{{ page_href(request, 'tab', 'goals') }}" class="{{ 'is-active' if tab == 'goals' }}">目标管理</a>
-</nav>
-
 <form class="filter-bar" hx-get="/todo/content" hx-target="#todo-content" hx-swap="outerHTML"
       hx-trigger="change, submit">
-  <input type="hidden" name="tab" value="{{ tab }}">
-  <label class="field">
-    <span>分类</span>
-    <select name="category">
-      <option value="">全部分类</option>
-      {% for name in categories %}
-      <option value="{{ name }}" {{ 'selected' if filters.category == name }}>{{ name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="field">
+  <div class="field tag-filter"
+       x-data='tagFilter({{ filters.tags|tojson }}, {{ tag_options|tojson }}, {{ tag_colors|tojson }})'
+       @click.outside="open=false">
     <span>标签（可多选）</span>
-    <select name="tag" multiple size="3">
-      {% for name in tag_options %}
-      <option value="{{ name }}" {{ 'selected' if name in filters.tags }}>{{ name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  {% if tab == 'board' %}
+    <button type="button" class="tag-filter-trigger" @click="open=!open">
+      <span class="tag-filter-value">
+        <template x-for="tag in selected" :key="tag">
+          <span class="tag-chip tag-colored" :style="'--tag-color:' + colorFor(tag)" x-text="tag"></span>
+        </template>
+        <span class="muted-sm" x-show="!selected.length">全部标签</span>
+      </span>
+      <span class="tag-filter-arrow" aria-hidden="true">▾</span>
+    </button>
+    <div class="tag-filter-panel" x-show="open" x-cloak>
+      <template x-for="tag in options" :key="tag">
+        <label class="tag-filter-option">
+          <input type="checkbox" name="tag" :value="tag"
+                 :checked="isSelected(tag)" @change="toggle(tag)">
+          <span class="tag-colored" :style="'--tag-color:' + colorFor(tag)" x-text="tag"></span>
+        </label>
+      </template>
+      <p class="muted-sm" x-show="!options.length">暂无标签，可在标签管理中新增。</p>
+    </div>
+  </div>
   <label class="field">
     <span>起始日期</span>
     <input type="date" name="date_from" value="{{ filters.date_from }}">
@@ -56,14 +54,13 @@
     <span>结束日期</span>
     <input type="date" name="date_to" value="{{ filters.date_to }}">
   </label>
-  {% endif %}
   <label class="field filter-search">
     <span>关键词</span>
     <input type="search" name="q" value="{{ filters.q }}" placeholder="搜索标题、说明或标签">
   </label>
   <div class="filter-actions">
     <button class="btn btn-primary" type="submit">筛选</button>
-    <a class="btn btn-ghost" href="/todo?tab={{ tab }}">重置</a>
+    <a class="btn btn-ghost" href="/todo">重置</a>
   </div>
 </form>
 
@@ -85,24 +82,12 @@
         </div>
         {% endfor %}
       </div>
-      <p class="footnote">每列独立分页，每页最多 5 条；分类与标签相互独立。</p>
-    </section>
-
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>目标快捷入口</h2><p class="panel-sub">查看全部目标</p></div>
-      </header>
-      <div class="stack">
-        {% for goal in goals[:4] %}
-        <div class="status-row">
-          <span>{{ goal.title }}</span>
-          <span class="badge">{{ goal.progress }}%</span>
-        </div>
-        {% else %}
-        <p class="empty-inline">还没有目标，点击「+ 新增目标」开始拆解。</p>
-        {% endfor %}
-      </div>
+      <p class="footnote">拖拽卡片可在「待办 / 进行中 / 已完成」间切换；每列独立分页，每页最多 5 条。</p>
     </section>
   </aside>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/todo.js" defer></script>
 {% endblock %}

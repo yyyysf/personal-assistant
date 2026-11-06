@@ -17,7 +17,12 @@ class TaskCreate(BaseModel):
     tags: str = ""
     status: str = "todo"
     due_date: datetime | None = None
-    goal_id: int | None = None
+    date_mode: str = "deadline"
+    planned_date: date | None = None
+    range_start: date | None = None
+    range_end: date | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
 
     @field_validator("priority")
     @classmethod
@@ -41,15 +46,13 @@ class TaskUpdate(BaseModel):
     tags: str | None = None
     status: str | None = None
     due_date: datetime | None = None
+    date_mode: str | None = None
+    planned_date: date | None = None
+    range_start: date | None = None
+    range_end: date | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
     archived: bool | None = None
-    goal_id: int | None = None
-
-
-class GoalCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    description: str = ""
-    progress: int = Field(default=0, ge=0, le=100)
-    target_date: date | None = None
 
 
 class PaperNoteCreate(BaseModel):

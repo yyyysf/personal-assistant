@@ -2,16 +2,17 @@
 
 <div id="schedule-records" class="stack">
   {% for record in records_page['items'] %}
+  {% set first_tag = record.tag_list[0] if record.tag_list else '' %}
   <article class="record-row" id="record-{{ record.id }}"
            data-detail-url="/schedule/records/{{ record.id }}/edit"
            data-detail-title="编辑计时记录">
-    <span class="project-dot" style="--project-color: {{ record.project.color if record.project else '#8e8e93' }}"></span>
+    <span class="project-dot"
+          style="--project-color: {{ tag_colors.get(first_tag|lower, '#C7C7CC') }}"></span>
     <div class="record-main">
       <strong>{{ record.title }}</strong>
       <span class="record-meta">
         {{ record.start_at|dt('%m-%d %H:%M') if record.start_at else '—' }}
-        {% if record.project %} · {{ record.project.name }}{% endif %}
-        {% if record.subproject %} / {{ record.subproject.name }}{% endif %}
+        {% for tag in record.tag_list %} · {{ tag }}{% endfor %}
       </span>
     </div>
     <span class="record-duration">

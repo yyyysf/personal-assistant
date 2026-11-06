@@ -1,56 +1,102 @@
+{% macro calendar_field(name, value='', with_time=False) %}
+<div class="calendar-field" x-data='calendarField({{ value|tojson }}, {{ with_time|tojson }})'
+     @click.outside="open=false">
+  <input type="hidden" name="{{ name }}" :value="hiddenValue">
+  <button type="button" class="calendar-trigger" :class="open ? 'is-open' : ''" @click="toggle()">
+    <span :class="value ? '' : 'is-empty'" x-text="display || '选择日期'"></span>
+    <span class="calendar-icon" aria-hidden="true">▦</span>
+  </button>
+  <div class="calendar-pop" x-show="open" x-cloak>
+    <div class="calendar-head">
+      <button type="button" class="calendar-nav" @click="prevMonth()" aria-label="上个月">‹</button>
+      <strong x-text="monthLabel"></strong>
+      <button type="button" class="calendar-nav" @click="nextMonth()" aria-label="下个月">›</button>
+    </div>
+    <div class="calendar-grid">
+      {% for label in ['一', '二', '三', '四', '五', '六', '日'] %}
+      <span class="calendar-weekday">{{ label }}</span>
+      {% endfor %}
+      <template x-for="cell in weeks" :key="cell.date">
+        <button type="button" class="calendar-day"
+                :class="{ 'is-out': !cell.inMonth, 'is-today': cell.isToday, 'is-selected': cell.isSelected }"
+                :disabled="!cell.inMonth"
+                @click="select(cell.date)" x-text="cell.day"></button>
+      </template>
+    </div>
+    <div class="calendar-time" x-show="withTime">
+      <span>时间</span>
+      <input type="time" x-model="time" step="60">
+    </div>
+    <div class="calendar-actions">
+      <button type="button" @click="pickToday()">今天</button>
+      <button type="button" @click="clear()">清除</button>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
 {% macro date_picker(
-  mode='deadline',
-  modes=['deadline', 'single', 'range'],
+  mode='single',
+  modes=['single', 'deadline', 'range'],
   mode_name='date_mode',
   deadline_name='due_date', deadline_value='',
   single_name='planned_date', single_value='',
-  start_name='range_start', end_name='range_end', start_value='', end_value=''
+  start_name='range_start', end_name='range_end', start_value='', end_value='',
+  time_row=False,
+  start_time_name='start_time', start_time_value='',
+  end_time_name='end_time', end_time_value=''
 ) %}
 <div class="date-picker" x-data="datePicker('{{ mode }}')">
   <div class="date-modes">
+    {% if 'single' in modes %}
+    <button type="button" class="date-mode-btn" :class="mode === 'single' ? 'is-active' : ''"
+            @click="mode = 'single'">日期</button>
+    {% endif %}
     {% if 'deadline' in modes %}
     <button type="button" class="date-mode-btn" :class="mode === 'deadline' ? 'is-active' : ''"
             @click="mode = 'deadline'">截止日期</button>
     {% endif %}
-    {% if 'single' in modes %}
-    <button type="button" class="date-mode-btn" :class="mode === 'single' ? 'is-active' : ''"
-            @click="mode = 'single'">计划单日</button>
-    {% endif %}
     {% if 'range' in modes %}
     <button type="button" class="date-mode-btn" :class="mode === 'range' ? 'is-active' : ''"
-            @click="mode = 'range'">起止区间</button>
+            @click="mode = 'range'">时间段</button>
     {% endif %}
   </div>
   <input type="hidden" name="{{ mode_name }}" :value="mode">
 
-  {% if 'deadline' in modes %}
-  <div class="date-group" x-show="mode === 'deadline'" x-cloak>
-    <label class="field"><span>截止时间</span>
-      <input class="input" type="datetime-local" name="{{ deadline_name }}"
-             value="{{ deadline_value }}" :disabled="mode !== 'deadline'">
-    </label>
+  {% if 'single' in modes %}
+  <div class="date-group-fields" x-show="mode === 'single'" x-cloak>
+    <div class="field"><span>日期</span>
+      {{ calendar_field(single_name, single_value) }}
+    </div>
+    {% if time_row %}
+    <div class="field-row">
+      <label class="field"><span>开始时间（可选）</span>
+        <input type="time" name="{{ start_time_name }}" value="{{ start_time_value }}">
+      </label>
+      <label class="field"><span>结束时间（可选）</span>
+        <input type="time" name="{{ end_time_name }}" value="{{ end_time_value }}">
+      </label>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 
-  {% if 'single' in modes %}
-  <div class="date-group" x-show="mode === 'single'" x-cloak>
-    <label class="field"><span>计划日期</span>
-      <input class="input" type="date" name="{{ single_name }}"
-             value="{{ single_value }}" :disabled="mode !== 'single'">
-    </label>
+  {% if 'deadline' in modes %}
+  <div class="date-group" x-show="mode === 'deadline'" x-cloak>
+    <div class="field"><span>截止日期与时间</span>
+      {{ calendar_field(deadline_name, deadline_value, True) }}
+    </div>
   </div>
   {% endif %}
 
   {% if 'range' in modes %}
   <div class="date-group" x-show="mode === 'range'" x-cloak>
-    <label class="field"><span>开始日期</span>
-      <input class="input" type="date" name="{{ start_name }}"
-             value="{{ start_value }}" :disabled="mode !== 'range'">
-    </label>
-    <label class="field"><span>结束日期</span>
-      <input class="input" type="date" name="{{ end_name }}"
-             value="{{ end_value }}" :disabled="mode !== 'range'">
-    </label>
+    <div class="field"><span>开始日期</span>
+      {{ calendar_field(start_name, start_value) }}
+    </div>
+    <div class="field"><span>结束日期</span>
+      {{ calendar_field(end_name, end_value) }}
+    </div>
   </div>
   {% endif %}
 </div>

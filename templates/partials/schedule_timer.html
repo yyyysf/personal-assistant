@@ -3,26 +3,23 @@
     <header class="panel-head">
       <div>
         <h2>专注计时台</h2>
-        <p class="panel-sub">选择计划任务，或直接输入临时任务；结束后自动落到时间轴</p>
+        <p class="panel-sub">选择任务，或直接输入临时任务；结束后自动落到时间轴与任务看板</p>
       </div>
       <span class="panel-hint">计时状态保存在本机浏览器</span>
     </header>
 
     <div class="timer-setup">
       <label class="field">
-        <span>计划任务</span>
+        <span>已有任务</span>
         <select id="timer-task-select">
           <option value="">— 使用临时任务 —</option>
           {% for task in timer_tasks %}
           <option value="{{ task.id }}"
                   data-title="{{ task.title }}"
-                  data-project-id="{{ task.project_id or '' }}"
-                  data-project-name="{{ task.project.name if task.project else '' }}"
-                  data-subproject-id="{{ task.subproject_id or '' }}"
-                  data-subproject-name="{{ task.subproject.name if task.subproject else '' }}"
-                  data-note="{{ task.note }}">
-            {{ task.title }}{% if task.project %} · {{ task.project.name }}{% endif %}
-            {% if task.start_at %}（{{ task.start_at|dt('%m-%d %H:%M') }}）{% endif %}
+                  data-tags="{{ task.tags }}"
+                  data-description="{{ task.description }}">
+            {{ task.title }}{% if task.tag_list %} · {{ task.tag_list|join('/') }}{% endif %}
+            {% if task.schedule_start %}（{{ task.schedule_start|dt('%m-%d %H:%M') }}）{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -34,13 +31,8 @@
           <input id="timer-temp-title" type="text" maxlength="200" placeholder="例如：整理实验数据">
         </label>
         <label class="field">
-          <span>临时任务项目</span>
-          <select id="timer-temp-project">
-            <option value="">未分类</option>
-            {% for project in projects %}
-            <option value="{{ project.id }}" data-color="{{ project.color }}">{{ project.name }}</option>
-            {% endfor %}
-          </select>
+          <span>临时任务标签</span>
+          <input id="timer-temp-tags" type="text" maxlength="200" placeholder="单个标签，如：科研">
         </label>
       </div>
 

@@ -6,10 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.core.logging import get_logger
+from src.core.tags import ensure_tags, normalize_tags
 from src.core.time_utils import days_ago, today
 from src.models import (
     Book,
-    Goal,
     LearningItem,
     LearningLog,
     LearningTrack,
@@ -35,21 +35,6 @@ def seed_demo_data(db: Session) -> None:
     logger.info("首次启动：写入演示数据")
     current_day = today()
 
-    goal_week = Goal(
-        title="本周核心目标：跑通科研阅读闭环",
-        description="arXiv 抓取 → LLM 摘要 → Zotero 入库 → 周末复盘",
-        progress=60,
-        target_date=current_day + timedelta(days=4),
-    )
-    goal_learning = Goal(
-        title="AI 音乐学习：完成第一个生成式作品",
-        description="掌握基础乐理、ACE-Step 与 MusicGen 的工作流",
-        progress=25,
-        target_date=current_day + timedelta(days=21),
-    )
-    db.add_all([goal_week, goal_learning])
-    db.flush()
-
     tasks = [
         Task(
             title="梳理 arXiv cs.AI 今日论文并标注重点",
@@ -59,7 +44,6 @@ def seed_demo_data(db: Session) -> None:
             tags="科研,论文",
             due_date=_at(current_day, 18),
             completed_at=_at(current_day, 9, 30),
-            goal_id=goal_week.id,
         ),
         Task(
             title="完成 AI 视频学习第 3 节：扩散模型直觉",
@@ -82,7 +66,6 @@ def seed_demo_data(db: Session) -> None:
             priority="high",
             tags="科研,笔记",
             due_date=_at(current_day, 22),
-            goal_id=goal_week.id,
         ),
         Task(
             title="阅读《构建第二大脑》第 4 章",
@@ -104,10 +87,11 @@ def seed_demo_data(db: Session) -> None:
             priority="medium",
             tags="学习,音乐",
             due_date=_at(current_day + timedelta(days=1), 21),
-            goal_id=goal_learning.id,
         ),
     ]
     db.add_all(tasks)
+    db.flush()
+    ensure_tags(db, [tag for task in tasks for tag in normalize_tags(task.tags)])
 
     papers = [
         Paper(

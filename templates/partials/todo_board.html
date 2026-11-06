@@ -7,10 +7,13 @@
       <h3>{{ column.label }}</h3>
       <span class="count">{{ column.page.total }}</span>
     </header>
-    <div class="kanban-body">
+    <div class="kanban-body" data-drop-status="{{ column.key }}">
       {% for task in column.page['items'] %}
       <article
-        class="task-card priority-{{ task.priority }}"
+        class="task-card"
+        draggable="true"
+        data-task-id="{{ task.id }}"
+        data-task-status="{{ task.status }}"
         data-detail-url="/todo/tasks/{{ task.id }}/detail"
         data-detail-title="任务详情">
         <div class="hover-actions">
@@ -20,37 +23,14 @@
                   hx-post="/todo/tasks/{{ task.id }}/delete" hx-swap="none"
                   hx-confirm="删除任务「{{ task.title }}」？">✕</button>
         </div>
-        <div class="task-top">
-          <span class="priority-label priority-{{ task.priority }}">{{ task.priority|priority }}</span>
-          {% if task.category %}<span class="badge badge-muted">{{ task.category }}</span>{% endif %}
-        </div>
-        <h4 class="task-title">{{ task.title }}</h4>
-        {% if task.description %}<p class="task-desc">{{ task.description }}</p>{% endif %}
-        {% if task.progress %}
-        <div class="progress"><span style="width: {{ task.progress }}%"></span></div>
-        {% endif %}
-        <div class="task-meta">
-          {% if task.date_label %}<span>{{ task.date_label }}</span>{% endif %}
-          {% for tag in task.tag_list %}<span class="tag">{{ tag }}</span>{% endfor %}
-          {% if task.goal %}<span>目标 · {{ task.goal.title }}</span>{% endif %}
-          {% if task.completed_at %}<span>{{ task.completed_at|dt('%m-%d %H:%M') }} 完成</span>{% endif %}
-        </div>
-        <div class="task-actions">
-          {% if task.status == 'todo' %}
-          <button class="btn btn-tiny" type="button" hx-post="/todo/tasks/{{ task.id }}/status"
-                  hx-vals='{"status": "doing"}' hx-swap="none">开始</button>
-          <button class="btn btn-tiny btn-primary" type="button" hx-post="/todo/tasks/{{ task.id }}/status"
-                  hx-vals='{"status": "done"}' hx-swap="none">完成</button>
-          {% elif task.status == 'doing' %}
-          <button class="btn btn-tiny btn-primary" type="button" hx-post="/todo/tasks/{{ task.id }}/status"
-                  hx-vals='{"status": "done"}' hx-swap="none">完成</button>
-          <button class="btn btn-tiny" type="button" hx-post="/todo/tasks/{{ task.id }}/status"
-                  hx-vals='{"status": "todo"}' hx-swap="none">退回</button>
-          {% else %}
-          <button class="btn btn-tiny" type="button" hx-post="/todo/tasks/{{ task.id }}/status"
-                  hx-vals='{"status": "todo"}' hx-swap="none">重新打开</button>
+        <div class="task-head">
+          {% if task.tag_list %}
+          <span class="tag-colored task-tag"
+                style="--tag-color: {{ tag_colors.get(task.tag_list[0]|lower, '#A9C7E8') }}">{{ task.tag_list[0] }}</span>
           {% endif %}
+          <h4 class="task-title">{{ task.title }}</h4>
         </div>
+        <p class="task-time">{{ task.date_label if task.date_label else '未安排日期' }}</p>
       </article>
       {% else %}
       <p class="column-empty">{{ '新增一条任务开始' if column.key == 'todo' else '暂无任务' }}</p>

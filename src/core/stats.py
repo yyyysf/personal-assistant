@@ -17,7 +17,6 @@ from src.core.time_utils import (
 )
 from src.models import (
     Book,
-    Goal,
     LearningItem,
     LearningLog,
     LearningTrack,
@@ -71,7 +70,7 @@ def activity_counts(db: Session, start: date, end: date) -> dict[date, int]:
         if completed_at:
             counts[completed_at.date()] = counts.get(completed_at.date(), 0) + 1
 
-    for column in (Paper.read_at, Book.finished_at, Goal.completed_at):
+    for column in (Paper.read_at, Book.finished_at):
         stamps = db.scalars(
             select(column).where(
                 column.is_not(None),
@@ -383,7 +382,6 @@ def dashboard_context(db: Session) -> dict:
     todo_stats = {
         "open": _count(db, Task, Task.archived.is_(False), Task.status != "done"),
         "done_total": _count(db, Task, Task.status == "done"),
-        "goals": db.scalars(select(Goal).order_by(Goal.id)).all(),
         "archived": _count(db, Task, Task.archived.is_(True)),
     }
     return {

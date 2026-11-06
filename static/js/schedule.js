@@ -129,10 +129,7 @@
     var state = {
       taskId: null,
       title: '',
-      projectId: null,
-      projectName: '',
-      subprojectId: null,
-      subprojectName: '',
+      tags: '',
       note: '',
       startedAt: null,
       accumulatedMs: 0,
@@ -146,27 +143,20 @@
     if (select.value) {
       state.taskId = Number(select.value);
       state.title = option.dataset.title || option.textContent.trim();
-      state.projectId = option.dataset.projectId ? Number(option.dataset.projectId) : null;
-      state.projectName = option.dataset.projectName || '';
-      state.subprojectId = option.dataset.subprojectId
-        ? Number(option.dataset.subprojectId)
-        : null;
-      state.subprojectName = option.dataset.subprojectName || '';
+      state.tags = option.dataset.tags || '';
+      if (!state.note) state.note = option.dataset.description || '';
       return state;
     }
 
     var titleInput = document.getElementById('timer-temp-title');
     var title = titleInput ? titleInput.value.trim() : '';
     if (!title) {
-      if (window.showToast) window.showToast('请选择计划任务或填写临时任务名称', 'error');
+      if (window.showToast) window.showToast('请选择任务或填写临时任务名称', 'error');
       return null;
     }
     state.title = title;
-    var projectSelect = document.getElementById('timer-temp-project');
-    if (projectSelect && projectSelect.value) {
-      state.projectId = Number(projectSelect.value);
-      state.projectName = projectSelect.options[projectSelect.selectedIndex].textContent.trim();
-    }
+    var tagsInput = document.getElementById('timer-temp-tags');
+    state.tags = tagsInput ? tagsInput.value.trim() : '';
     return state;
   }
 
@@ -228,12 +218,11 @@
     var payload = {
       task_id: state.taskId || null,
       title: state.title || '临时任务',
-      project_id: state.projectId || null,
-      subproject_id: state.subprojectId || null,
+      tags: state.tags || '',
       started_at: localDateTime(startedAt),
       ended_at: localDateTime(endedAt),
       duration_seconds: Math.max(1, Math.round(totalMs / 1000)),
-      note: state.note || '',
+      description: state.note || '',
       client_token: state.clientToken || makeToken()
     };
 
@@ -265,11 +254,8 @@
     var state = {
       taskId: button.dataset.taskId ? Number(button.dataset.taskId) : null,
       title: button.dataset.title || '计划任务',
-      projectId: button.dataset.projectId ? Number(button.dataset.projectId) : null,
-      projectName: button.dataset.projectName || '',
-      subprojectId: button.dataset.subprojectId ? Number(button.dataset.subprojectId) : null,
-      subprojectName: button.dataset.subprojectName || '',
-      note: button.dataset.note || '',
+      tags: button.dataset.tags || '',
+      note: button.dataset.description || '',
       startedAt: new Date().toISOString(),
       accumulatedMs: 0,
       running: true,
@@ -349,14 +335,14 @@
     destroyCharts();
 
     var pieEl = document.getElementById('schedule-pie');
-    if (pieEl && data.projects && data.projects.length) {
+    if (pieEl && data.tags && data.tags.length) {
       chartInstances.push(new window.Chart(pieEl, {
         type: 'doughnut',
         data: {
-          labels: data.projects.map(function (item) { return item.name; }),
+          labels: data.tags.map(function (item) { return item.name; }),
           datasets: [{
-            data: data.projects.map(function (item) { return item.hours; }),
-            backgroundColor: data.projects.map(function (item) { return item.color; }),
+            data: data.tags.map(function (item) { return item.hours; }),
+            backgroundColor: data.tags.map(function (item) { return item.color; }),
             borderWidth: 0
           }]
         },

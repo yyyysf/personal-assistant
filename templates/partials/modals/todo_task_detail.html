@@ -2,23 +2,19 @@
   <header>
     <h3>{{ task.title }}</h3>
     <p class="muted-sm">
-      {{ task.priority|priority }}优先级
-      {% if task.category %} · {{ task.category }}{% endif %}
+      {{ {'todo': '待办', 'doing': '进行中', 'done': '已完成'}.get(task.status, task.status) }}
       {% if task.date_label %} · {{ task.date_label }}{% endif %}
     </p>
   </header>
 
   <dl class="detail-grid">
-    <dt>状态</dt>
-    <dd>{{ {'todo': '待办', 'doing': '进行中', 'done': '已完成'}.get(task.status, task.status) }}</dd>
-    <dt>进度</dt>
-    <dd>{{ task.progress }}%</dd>
     <dt>标签</dt>
     <dd>
-      {% for tag in task.tag_list %}<span class="tag">{{ tag }}</span>{% else %}—{% endfor %}
+      {% for tag in task.tag_list %}
+      <span class="tag-colored"
+            style="--tag-color: {{ tag_colors.get(tag|lower, '#A9C7E8') }}">{{ tag }}</span>
+      {% else %}—{% endfor %}
     </dd>
-    <dt>关联目标</dt>
-    <dd>{{ task.goal.title if task.goal else '—' }}</dd>
     <dt>创建时间</dt>
     <dd>{{ task.created_at|dt }}</dd>
     <dt>完成时间</dt>

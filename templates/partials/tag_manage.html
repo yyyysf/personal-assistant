@@ -1,0 +1,39 @@
+<div id="tag-manage" class="stack">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <form class="tag-manage-create" hx-post="/todo/tags/new" hx-target="#tag-manage"
+        hx-swap="outerHTML">
+    <label class="field">
+      <span>新增标签</span>
+      <input type="text" name="name" maxlength="30" placeholder="输入标签名称，自动分配马卡龙颜色">
+    </label>
+    <button class="btn btn-primary" type="submit">添加</button>
+  </form>
+
+  <div class="tag-manage-list">
+    {% for row in tag_rows %}
+    <div class="tag-manage-row">
+      <div class="tag-manage-main">
+        <span class="tag-colored" style="--tag-color: {{ row.tag.color }}">{{ row.tag.name }}</span>
+        <span class="muted-sm">{{ row.count }} 个任务</span>
+      </div>
+      <form class="tag-inline-form" hx-post="/todo/tags/{{ row.tag.id }}/rename"
+            hx-target="#tag-manage" hx-swap="outerHTML">
+        <input class="input" type="text" name="name" maxlength="30" value="{{ row.tag.name }}">
+        <button class="btn btn-tiny" type="submit">重命名</button>
+      </form>
+      <form class="tag-inline-form" hx-post="/todo/tags/{{ row.tag.id }}/recolor"
+            hx-target="#tag-manage" hx-swap="outerHTML">
+        <input type="color" name="color" value="{{ row.tag.color }}">
+        <button class="btn btn-tiny" type="submit">改色</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty-inline">还没有标签。创建任务时输入的标签会自动出现在这里。</p>
+    {% endfor %}
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>关闭</button>
+  </div>
+</div>

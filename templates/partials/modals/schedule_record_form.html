@@ -1,3 +1,4 @@
+{% from "components/tag_picker.html" import tag_picker %}
 <form class="stack-form" hx-post="/schedule/records/{{ record.id }}/edit"
       hx-target="#modal-body" hx-swap="innerHTML">
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
@@ -7,16 +8,10 @@
     <input type="text" name="title" maxlength="200" required value="{{ values.title }}">
   </label>
 
-  <label class="field">
-    <span>项目</span>
-    <select name="project_id">
-      <option value="">未分类</option>
-      {% for project in projects %}
-      <option value="{{ project.id }}"
-              {{ 'selected' if values.project_id|string == project.id|string }}>{{ project.name }}</option>
-      {% endfor %}
-    </select>
-  </label>
+  <div class="field">
+    <span>标签</span>
+    {{ tag_picker('tags', values.tags, tag_options, tag_colors) }}
+  </div>
 
   <div class="field-row field-row-3">
     <label class="field">
@@ -36,7 +31,7 @@
 
   <label class="field">
     <span>备注（可选）</span>
-    <textarea name="note" rows="3">{{ values.note }}</textarea>
+    <textarea name="description" rows="3">{{ values.description }}</textarea>
   </label>
 
   <div class="modal-actions">

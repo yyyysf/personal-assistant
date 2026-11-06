@@ -4,7 +4,6 @@ from typing import Any
 
 from src.models import (
     Book,
-    Goal,
     LearningItem,
     LearningLog,
     LearningTrack,
@@ -32,33 +31,19 @@ def task_to_dict(task: Task) -> dict:
         "status": task.status,
         "priority": task.priority,
         "tags": task.tag_list,
-        "category": task.category,
         "date_mode": task.date_mode,
         "date_label": task.date_label,
         "due_date": _iso(task.due_date),
         "planned_date": _iso(task.planned_date),
         "range_start": _iso(task.range_start),
         "range_end": _iso(task.range_end),
+        "start_at": _iso(task.start_at),
+        "end_at": _iso(task.end_at),
+        "duration_seconds": task.duration_seconds,
         "progress": task.progress,
         "completed_at": _iso(task.completed_at),
         "archived": task.archived,
-        "goal_id": task.goal_id,
         "created_at": _iso(task.created_at),
-    }
-
-
-def goal_to_dict(goal: Goal) -> dict:
-    return {
-        "id": goal.id,
-        "title": goal.title,
-        "description": goal.description,
-        "progress": goal.progress,
-        "target_date": _iso(goal.target_date),
-        "category": goal.category,
-        "tags": goal.tag_list,
-        "completed_at": _iso(goal.completed_at),
-        "task_count": len(goal.tasks),
-        "created_at": _iso(goal.created_at),
     }
 
 
@@ -270,7 +255,6 @@ def dashboard_to_dict(context: dict) -> dict:
     travel = context.get("travel") or {}
     todo = context.get("todo") or {}
     todo_stats = dict(todo.get("stats") or {})
-    todo_stats["goals"] = [goal_to_dict(goal) for goal in todo_stats.get("goals") or []]
     review = context.get("review")
 
     return {

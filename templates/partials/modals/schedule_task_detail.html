@@ -2,49 +2,50 @@
   <header>
     <h3>{{ task.title }}</h3>
     <p class="muted-sm">
-      <span class="project-dot" style="--project-color: {{ task.project.color if task.project else '#8e8e93' }}"></span>
-      {{ task.project.name if task.project else '未分类' }}
-      {% if task.subproject %} / {{ task.subproject.name }}{% endif %}
-      · {{ '已完成' if task.is_done else '计划中' }}
+      {{ '已完成' if task.is_done else ('进行中' if task.status == 'doing' else '待办') }}
+      {% if task.date_label %} · {{ task.date_label }}{% endif %}
     </p>
   </header>
 
   <dl class="detail-grid">
-    <dt>日期</dt>
-    <dd>{{ task.planned_date|d if task.planned_date else '—' }}</dd>
+    <dt>标签</dt>
+    <dd>
+      {% for tag in task.tag_list %}
+      <span class="tag-colored"
+            style="--tag-color: {{ tag_colors.get(tag|lower, '#A9C7E8') }}">{{ tag }}</span>
+      {% else %}—{% endfor %}
+    </dd>
     <dt>时间</dt>
     <dd>
-      {{ task.start_at|dt('%H:%M') if task.start_at else '—' }} →
-      {{ task.end_at|dt('%H:%M') if task.end_at else '—' }}
-      {% if task.start_at and task.end_at and task.end_at.date() != task.start_at.date() %}（次日）{% endif %}
+      {% if task.schedule_start %}
+        {{ task.schedule_start|dt('%m-%d %H:%M') }} →
+        {{ task.schedule_end|dt('%m-%d %H:%M') if task.schedule_end else '—' }}
+      {% else %}—{% endif %}
     </dd>
-    <dt>时长</dt>
+    <dt>专注时长</dt>
     <dd>{{ duration_seconds // 3600 }} 小时 {{ (duration_seconds % 3600) // 60 }} 分钟</dd>
     <dt>完成时间</dt>
     <dd>{{ task.completed_at|dt if task.completed_at else '—' }}</dd>
   </dl>
 
-  {% if task.note %}
+  {% if task.description %}
   <div>
     <p class="form-section-title">备注</p>
-    <p class="muted-sm">{{ task.note }}</p>
+    <p class="muted-sm">{{ task.description }}</p>
   </div>
   {% endif %}
 
   <div class="modal-actions">
-    {% if task.is_planned %}
+    {% if not task.is_done %}
     <button class="btn btn-primary" type="button" data-timer-start
             data-task-id="{{ task.id }}"
             data-title="{{ task.title }}"
-            data-project-id="{{ task.project_id or '' }}"
-            data-project-name="{{ task.project.name if task.project else '' }}"
-            data-subproject-id="{{ task.subproject_id or '' }}"
-            data-subproject-name="{{ task.subproject.name if task.subproject else '' }}"
-            data-note="{{ task.note }}">开始专注计时</button>
+            data-tags="{{ task.tags }}"
+            data-description="{{ task.description }}">开始专注计时</button>
     {% endif %}
     <button class="btn btn-ghost" type="button"
-            data-modal-url="{{ '/schedule/records/' ~ task.id ~ '/edit' if task.is_done else '/schedule/tasks/' ~ task.id ~ '/edit' }}"
-            data-modal-title="{{ '编辑计时记录' if task.is_done else '编辑任务' }}">编辑</button>
+            data-modal-url="{{ '/schedule/records/' ~ task.id ~ '/edit' if task.is_done and task.start_at else '/schedule/tasks/' ~ task.id ~ '/edit' }}"
+            data-modal-title="{{ '编辑计时记录' if task.is_done and task.start_at else '编辑任务' }}">编辑</button>
     <button class="btn btn-ghost danger-text" type="button"
             hx-post="/schedule/tasks/{{ task.id }}/delete" hx-swap="none"
             hx-confirm="删除任务「{{ task.title }}」？">删除</button>

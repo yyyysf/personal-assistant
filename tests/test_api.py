@@ -23,7 +23,7 @@ def test_task_crud_and_dashboard_stats(client):
     )
     assert created.status_code == 200
     task_id = created.json()["data"]["id"]
-    assert created.json()["data"]["tags"] == ["测试", "API"]
+    assert created.json()["data"]["tags"] == ["测试"]
 
     listed = client.get("/api/v1/tasks")
     assert listed.json()["data"][0]["id"] == task_id

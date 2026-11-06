@@ -8,8 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%230071e3'/><stop offset='1' stop-color='%235e5ce6'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(%23g)'/><circle cx='50' cy='50' r='20' fill='white' fill-opacity='.92'/></svg>">
   <link rel="stylesheet" href="/static/css/apple.css">
   <link rel="stylesheet" href="/static/css/components.css">
-  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  <script src="/static/js/vendor/htmx.min.js" defer></script>
   {% block styles %}{% endblock %}
 </head>
 <body>
@@ -80,10 +79,6 @@
       <main class="content">
         {% block content %}{% endblock %}
       </main>
-
-      <footer class="footer">
-        本地运行 · 数据仅存本机 SQLite · {{ current_year }}
-      </footer>
     </div>
   </div>
 
@@ -91,6 +86,8 @@
   {% include "components/modal.html" %}
   <script src="/static/js/app.js" defer></script>
   <script src="/static/js/components.js" defer></script>
+  <!-- Alpine 必须在 components.js 注册完组件后启动，否则 alpine:init 已错过 -->
+  <script src="/static/js/vendor/alpine.min.js" defer></script>
   <script src="/static/js/schedule.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>

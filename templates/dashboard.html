@@ -75,7 +75,7 @@
         <button type="button" :class="{ active: tab === 'learning' }" @click="tab = 'learning'">业余学习</button>
         <button type="button" :class="{ active: tab === 'reading' }" @click="tab = 'reading'">书单阅读</button>
         <button type="button" :class="{ active: tab === 'travel' }" @click="tab = 'travel'">旅游规划</button>
-        <button type="button" :class="{ active: tab === 'todo' }" @click="tab = 'todo'">Todo 目标管理</button>
+        <button type="button" :class="{ active: tab === 'todo' }" @click="tab = 'todo'">任务管理</button>
       </nav>
 
       <div class="tab-body" x-show="tab === 'overview'" x-cloak>
@@ -247,7 +247,6 @@
         <div class="inline-stats">
           <span><strong>{{ todo.stats.open }}</strong> 待推进</span>
           <span><strong>{{ todo.stats.done_total }}</strong> 已完成</span>
-          <span><strong>{{ todo.stats.goals|length }}</strong> 个目标</span>
         </div>
         <div class="stack">
           {% for task in todo.today %}
@@ -260,15 +259,7 @@
           <p class="empty">今日待办已清空。</p>
           {% endfor %}
         </div>
-        <div class="goal-bars">
-          {% for goal in todo.stats.goals %}
-          <div class="goal-bar">
-            <div class="goal-bar-head"><span>{{ goal.title }}</span><strong>{{ goal.progress }}%</strong></div>
-            <div class="progress"><span style="width: {{ goal.progress }}%"></span></div>
-          </div>
-          {% endfor %}
-        </div>
-        <a class="btn btn-ghost" href="/todo">进入 Todo 看板</a>
+        <a class="btn btn-ghost" href="/todo">进入任务管理</a>
       </div>
     </section>
   </div>

@@ -27,12 +27,11 @@
       <input type="date" name="date_to" value="{{ stats_filters.date_to }}">
     </label>
     <label class="field">
-      <span>项目</span>
-      <select name="project_id">
-        <option value="">全部项目</option>
-        {% for project in projects %}
-        <option value="{{ project.id }}"
-                {{ 'selected' if stats_filters.project_id|string == project.id|string }}>{{ project.name }}</option>
+      <span>标签</span>
+      <select name="tag">
+        <option value="">全部标签</option>
+        {% for name in tag_options %}
+        <option value="{{ name }}" {{ 'selected' if stats_filters.tag == name }}>{{ name }}</option>
         {% endfor %}
       </select>
     </label>
@@ -62,15 +61,15 @@
       <span class="stat-sub">{{ (stats.busiest_seconds / 3600)|round(2) }} 小时</span>
     </article>
     <article class="stat-card">
-      <span class="stat-label">参与项目</span>
-      <strong class="stat-value">{{ stats.projects|length }}<small>个</small></strong>
+      <span class="stat-label">使用标签</span>
+      <strong class="stat-value">{{ stats.tags|length }}<small>个</small></strong>
       <span class="stat-sub">未分类记录也会单独统计</span>
     </article>
   </div>
 
   <div class="stats-grid">
     <div class="chart-card">
-      <h3>项目占比</h3>
+      <h3>标签占比</h3>
       <div class="chart-box"><canvas id="schedule-pie"></canvas></div>
     </div>
     <div class="chart-card">
@@ -84,15 +83,15 @@
   <div class="stats-table-wrap">
     <table class="stats-table">
       <thead>
-        <tr><th>项目</th><th>子项目</th><th>记录数</th><th>时长</th></tr>
+        <tr><th>标签</th><th>记录数</th><th>时长</th><th>占比</th></tr>
       </thead>
       <tbody>
-        {% for row in stats.table %}
+        {% for row in stats.tags %}
         <tr>
-          <td><span class="project-dot" style="--project-color: {{ row.color }}"></span>{{ row.project }}</td>
-          <td>{{ row.subproject or '—' }}</td>
+          <td><span class="project-dot" style="--project-color: {{ row.color }}"></span>{{ row.name }}</td>
           <td>{{ row.count }}</td>
           <td>{{ row.hours }} h</td>
+          <td>{{ row.percent }}%</td>
         </tr>
         {% else %}
         <tr><td colspan="4" class="empty-inline">当前范围内没有已完成记录。</td></tr>
