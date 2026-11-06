@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "只做连通性与预检，不拉取代码、不重启服务"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,74 +19,119 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     environment: production
     steps:
+      - name: Validate configuration
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          echo "==> Deployment target"
+          echo "host=${DEPLOY_HOST:-<missing>}"
+          echo "user=${DEPLOY_USER:-<missing>}"
+          echo "ssh=$(ssh -V 2>&1)"
+          [ -n "${DEPLOY_HOST:-}" ] || { echo "::error::Missing repository variable DEPLOY_HOST"; exit 1; }
+          [ -n "${DEPLOY_USER:-}" ] || { echo "::error::Missing repository variable DEPLOY_USER"; exit 1; }
+          [ -n "${DEPLOY_SSH_KEY:-}" ] || { echo "::error::Missing secret DEPLOY_SSH_KEY"; exit 1; }
+          [ -n "${DEPLOY_KNOWN_HOSTS:-}" ] || { echo "::error::Missing secret DEPLOY_KNOWN_HOSTS"; exit 1; }
+
       - name: Configure SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
         run: |
-          if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
-            echo "Missing DEPLOY_SSH_KEY or DEPLOY_KNOWN_HOSTS secret." >&2
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/assistant_deploy"
+          chmod 600 "$HOME/.ssh/assistant_deploy"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+          echo "==> Private key"
+          if ! ssh-keygen -y -f "$HOME/.ssh/assistant_deploy" >/dev/null 2>&1; then
+            echo "::error::DEPLOY_SSH_KEY is not a valid OpenSSH private key"
             exit 1
           fi
-          install -m 700 -d "$HOME/.ssh"
-          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/assistant_deploy"
-          chmod 600 "$HOME/.ssh/assistant_deploy"
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 644 "$HOME/.ssh/known_hosts"
+          ssh-keygen -lf "$HOME/.ssh/assistant_deploy" || true
+
+          echo "==> known_hosts"
+          if ! ssh-keygen -F "$DEPLOY_HOST" -f "$HOME/.ssh/known_hosts"; then
+            echo "::error::DEPLOY_KNOWN_HOSTS has no entry for $DEPLOY_HOST"
+            echo "Regenerate with: ssh-keyscan -H $DEPLOY_HOST"
+            exit 1
+          fi
 
       - name: Deploy over SSH
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DRY_RUN: ${{ inputs.dry_run == true && '1' || '0' }}
         run: |
-          : "${DEPLOY_HOST:?Repository variable DEPLOY_HOST is required}"
-          : "${DEPLOY_USER:?Repository variable DEPLOY_USER is required}"
-          ssh -i "$HOME/.ssh/assistant_deploy" \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o ConnectTimeout=15 \
-            -o ServerAliveInterval=15 \
-            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'REMOTE'
           set -euo pipefail
+          echo "==> Connecting to $DEPLOY_USER@$DEPLOY_HOST (dry_run=${DRY_RUN:-0})"
+          tr -d '\r' <<'REMOTE' | ssh -v -i "$HOME/.ssh/assistant_deploy" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o PreferredAuthentications=publickey \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "DRY_RUN='${DRY_RUN:-0}' bash -s"
+          set -Eeuo pipefail
+          PS4='+ [line ${LINENO}] '
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
           APP_DIR="/home/ubuntu/personal-assistant"
           SERVICE="assistant"
           HEALTH_URL="http://127.0.0.1:8000/api/v1/health"
-          export PATH="$HOME/.local/bin:$PATH"
-
-          cd "$APP_DIR"
-
-          if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
-            echo "ERROR: deployment checkout is not on main; refusing to deploy." >&2
-            exit 1
-          fi
-          if ! git diff --quiet || ! git diff --cached --quiet; then
-            echo "ERROR: working tree has uncommitted changes; refusing to deploy." >&2
-            exit 1
-          fi
-
-          PREV_SHA="$(git rev-parse HEAD)"
-          git fetch --prune origin main
-          NEW_SHA="$(git rev-parse origin/main)"
-          if [ "$PREV_SHA" = "$NEW_SHA" ]; then
-            echo "Already at $NEW_SHA; nothing to deploy."
-            exit 0
-          fi
-          echo "Deploying $PREV_SHA -> $NEW_SHA"
-
+          UV_INDEX="https://mirrors.cloud.tencent.com/pypi/simple"
+          DRY_RUN="${DRY_RUN:-0}"
+          PREV_SHA=""
+          NEW_SHA=""
           DEPS_CHANGED=0
-          if ! git diff --quiet "$PREV_SHA" "$NEW_SHA" -- pyproject.toml uv.lock; then
-            DEPS_CHANGED=1
-          fi
+          UV_BIN=""
+
+          log() { printf '\n===> %s\n' "$*"; }
+          fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
+
+          dump_diagnostics() {
+            set +e
+            echo "--- systemctl status ---" >&2
+            systemctl status "$SERVICE" --no-pager -l 2>&1 | tail -40 >&2
+            echo "--- journalctl (last 100 lines) ---" >&2
+            sudo -n journalctl -u "$SERVICE" -n 100 --no-pager 2>&1 | tail -100 >&2
+            echo "--- disk ---" >&2
+            df -h "$HOME" 2>&1 | tail -2 >&2
+          }
+
+          on_error() {
+            rc=$?
+            set +e
+            echo "ERROR: remote deploy failed at line $1 (exit $rc)" >&2
+            dump_diagnostics
+            exit "$rc"
+          }
+          trap 'on_error $LINENO' ERR
 
           health_check() {
-            for _ in $(seq 1 30); do
-              if curl -fsS --max-time 3 "$HEALTH_URL" | grep -Eq '"ok" *: *true'; then
-                return 0
+            local attempt body
+            for attempt in $(seq 1 30); do
+              if body="$(curl -fsS --max-time 4 "$HEALTH_URL" 2>&1)"; then
+                echo "health[$attempt]: $body"
+                if printf '%s' "$body" | grep -Eq '"ok" *: *true'; then
+                  return 0
+                fi
+                echo "health[$attempt]: unexpected response body" >&2
+              else
+                echo "health[$attempt]: curl failed: $body" >&2
               fi
               sleep 2
             done
@@ -89,34 +139,97 @@ jobs:
           }
 
           rollback() {
-            echo "ERROR: deployment failed; rolling back to $PREV_SHA." >&2
-            git reset --hard "$PREV_SHA"
-            if [ "$DEPS_CHANGED" -eq 1 ]; then
-              UV_HTTP_TIMEOUT=180 uv sync --python 3.12 --no-dev --frozen \
-                --index-url https://mirrors.cloud.tencent.com/pypi/simple \
-                || echo "WARNING: uv sync during rollback failed." >&2
+            set +e
+            echo "ERROR: $1; rolling back to $PREV_SHA" >&2
+            dump_diagnostics
+            cd "$APP_DIR" || true
+            git reset --hard "$PREV_SHA" || echo "WARNING: git reset --hard failed" >&2
+            if [ "$DEPS_CHANGED" -eq 1 ] && [ -n "$UV_BIN" ]; then
+              UV_HTTP_TIMEOUT=180 "$UV_BIN" sync --python 3.12 --no-dev --frozen \
+                --index-url "$UV_INDEX" || echo "WARNING: uv sync during rollback failed" >&2
             fi
-            sudo /usr/bin/systemctl restart "$SERVICE" || true
+            sudo -n /usr/bin/systemctl restart "$SERVICE" \
+              || echo "WARNING: rollback restart failed" >&2
             if health_check; then
-              echo "Rollback to $PREV_SHA is healthy; old version restored."
+              echo "Rollback healthy; production restored to $PREV_SHA" >&2
             else
-              echo "ERROR: rollback health check failed; manual intervention required." >&2
+              dump_diagnostics
+              echo "ERROR: rollback health check failed; manual intervention required" >&2
             fi
             exit 1
           }
 
-          git merge --ff-only "$NEW_SHA"
-
-          if [ "$DEPS_CHANGED" -eq 1 ]; then
-            echo "Dependencies changed; syncing with uv."
-            UV_HTTP_TIMEOUT=180 uv sync --python 3.12 --no-dev --frozen \
-              --index-url https://mirrors.cloud.tencent.com/pypi/simple \
-              || rollback
+          log "Preflight"
+          set -x
+          whoami
+          hostname
+          pwd
+          [ -d "$APP_DIR" ] || fail "APP_DIR not found: $APP_DIR"
+          cd "$APP_DIR"
+          git --version
+          echo "repo=$(git config --get remote.origin.url)"
+          CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+          CURRENT_HEAD="$(git rev-parse HEAD)"
+          echo "branch=$CURRENT_BRANCH head=$CURRENT_HEAD"
+          [ "$CURRENT_BRANCH" = "main" ] || fail "checkout is on '$CURRENT_BRANCH', expected main"
+          DIRTY="$(git status --porcelain)"
+          if [ -n "$DIRTY" ]; then
+            printf '%s\n' "$DIRTY"
+            fail "working tree is dirty; aborting to avoid overwriting server-side changes"
           fi
 
-          sudo /usr/bin/systemctl restart "$SERVICE" || rollback
-          health_check || rollback
-          sudo /usr/bin/systemctl is-active --quiet "$SERVICE" || rollback
+          UV_BIN="$(command -v uv || true)"
+          echo "uv=${UV_BIN:-<not found>}"
 
-          echo "Deployment healthy at $NEW_SHA."
+          log "Check service state before deploy"
+          systemctl is-active "$SERVICE" || true
+          health_check && echo "pre-deploy health OK" || echo "WARNING: pre-deploy health check failed" >&2
+
+          log "Fetch origin/main"
+          git fetch --prune --verbose origin main || fail "git fetch failed"
+          NEW_SHA="$(git rev-parse origin/main)"
+          PREV_SHA="$CURRENT_HEAD"
+          echo "prev=$PREV_SHA new=$NEW_SHA"
+          git log --oneline "$PREV_SHA..$NEW_SHA" | head -20 || true
+
+          if [ "$DRY_RUN" = "1" ]; then
+            log "DRY RUN: stopping before merge and restart"
+            exit 0
+          fi
+
+          if [ "$PREV_SHA" = "$NEW_SHA" ]; then
+            log "Already at $NEW_SHA; verifying service"
+            systemctl is-active --quiet "$SERVICE" || fail "service is not active"
+            health_check || fail "health check failed"
+            log "No changes to deploy"
+            exit 0
+          fi
+
+          if git diff --quiet "$PREV_SHA" "$NEW_SHA" -- pyproject.toml uv.lock; then
+            DEPS_CHANGED=0
+          else
+            DEPS_CHANGED=1
+          fi
+          echo "deps_changed=$DEPS_CHANGED"
+
+          log "Fast-forward to $NEW_SHA"
+          git merge --ff-only "$NEW_SHA" || rollback "git merge --ff-only failed"
+
+          if [ "$DEPS_CHANGED" -eq 1 ]; then
+            log "Syncing dependencies with uv"
+            [ -n "$UV_BIN" ] || rollback "uv not found; cannot sync dependencies"
+            echo "uv version: $("$UV_BIN" --version)"
+            UV_HTTP_TIMEOUT=180 "$UV_BIN" sync --python 3.12 --no-dev --frozen \
+              --index-url "$UV_INDEX" || rollback "uv sync failed"
+          fi
+
+          log "Restarting $SERVICE"
+          sudo -n /usr/bin/systemctl restart "$SERVICE" || rollback "systemctl restart failed"
+
+          log "Health check after restart"
+          health_check || rollback "health check failed after restart"
+          systemctl is-active --quiet "$SERVICE" || rollback "service is not active after restart"
+
+          log "Deployment complete: $NEW_SHA"
+          echo "health payload: $(curl -fsS --max-time 5 "$HEALTH_URL")"
           REMOTE
