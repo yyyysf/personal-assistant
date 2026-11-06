@@ -80,6 +80,36 @@ def _add_missing_columns() -> None:
                 logger.info("迁移：%s 新增列 %s", table, name)
 
 
+def _drop_obsolete_task_columns() -> None:
+    """删除旧版 tasks 表遗留的必填列，否则新模型插入会违反 NOT NULL。
+
+    旧版 category 是分类字段，新版统一用 tags；删除前把值并入空标签，避免丢数据。
+    """
+    inspector = inspect(engine)
+    if "tasks" not in inspector.get_table_names():
+        return
+    model_columns = {column.name for column in Task.__table__.columns}
+    obsolete = [
+        column["name"]
+        for column in inspector.get_columns("tasks")
+        if column["name"] not in model_columns and not column["nullable"]
+    ]
+    if not obsolete:
+        return
+    with engine.begin() as conn:
+        for name in obsolete:
+            if name == "category":
+                conn.execute(
+                    text(
+                        'UPDATE "tasks" SET tags = category '
+                        "WHERE (tags IS NULL OR tags = '') "
+                        "AND category IS NOT NULL AND category != ''"
+                    )
+                )
+            conn.execute(text(f'ALTER TABLE "tasks" DROP COLUMN "{name}"'))
+            logger.info("迁移：删除 tasks 遗留必填列 %s", name)
+
+
 def _migrate_time_tasks(db: Session) -> None:
     """把旧日程时间模块的 time_tasks 数据搬进统一 Task，避免历史记录丢失。"""
     for legacy in db.scalars(select(LegacyTimeTask)).all():
@@ -143,4 +173,5 @@ def _backfill() -> None:
 
 def run_migrations() -> None:
     _add_missing_columns()
+    _drop_obsolete_task_columns()
     _backfill()

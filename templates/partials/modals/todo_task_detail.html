@@ -31,9 +31,16 @@
   <div class="modal-actions">
     <button class="btn btn-ghost" type="button"
             data-modal-url="/todo/tasks/{{ task.id }}/edit" data-modal-title="编辑任务">编辑</button>
+    <button class="btn btn-primary" type="button"
+            hx-post="/todo/tasks/{{ task.id }}/status"
+            hx-vals='{{ {"status": "todo" if task.status == "done" else "done"}|tojson }}'
+            hx-swap="none"
+            hx-on::after-request="AppModal.close()">
+      {{ '标记为未完成' if task.status == 'done' else '标记完成' }}
+    </button>
     <button class="btn btn-ghost danger-text" type="button"
             hx-post="/todo/tasks/{{ task.id }}/delete" hx-swap="none"
             hx-confirm="删除任务「{{ task.title }}」？">删除</button>
-    <button class="btn btn-primary" type="button" data-modal-close>关闭</button>
+    <button class="btn btn-ghost" type="button" data-modal-close>关闭</button>
   </div>
 </section>

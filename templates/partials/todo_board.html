@@ -17,6 +17,12 @@
         data-detail-url="/todo/tasks/{{ task.id }}/detail"
         data-detail-title="任务详情">
         <div class="hover-actions">
+          {% if task.status == 'todo' %}
+          <button class="icon-btn" type="button" title="开始进行"
+                  hx-post="/todo/tasks/{{ task.id }}/status"
+                  hx-vals='{{ {"status": "doing"}|tojson }}'
+                  hx-swap="none" hx-disabled-elt="this">▶</button>
+          {% endif %}
           <button class="icon-btn" type="button" title="编辑任务"
                   data-modal-url="/todo/tasks/{{ task.id }}/edit" data-modal-title="编辑任务">✎</button>
           <button class="icon-btn" type="button" title="删除任务"
@@ -24,6 +30,15 @@
                   hx-confirm="删除任务「{{ task.title }}」？">✕</button>
         </div>
         <div class="task-head">
+          {% if task.status != 'done' %}
+          <button class="task-check" type="button"
+                  title="标记完成" aria-label="标记完成" aria-pressed="false"
+                  hx-post="/todo/tasks/{{ task.id }}/status"
+                  hx-vals='{{ {"status": "done"}|tojson }}'
+                  hx-swap="none" hx-disabled-elt="this">
+            <span class="task-check-mark">✓</span>
+          </button>
+          {% endif %}
           {% if task.tag_list %}
           <span class="tag-colored task-tag"
                 style="--tag-color: {{ tag_colors.get(task.tag_list[0]|lower, '#A9C7E8') }}">{{ task.tag_list[0] }}</span>
