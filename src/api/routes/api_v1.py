@@ -16,7 +16,6 @@ from src.api.schemas import (
     CategoryUpdate,
     FeedSourceCreate,
     FeedSourceUpdate,
-    GoalCreate,
     LearningItemCreate,
     LearningItemUpdate,
     LearningLogCreate,
@@ -31,7 +30,6 @@ from src.api.serializers import (
     book_to_dict,
     dashboard_to_dict,
     digest_to_dict,
-    goal_to_dict,
     learning_item_to_dict,
     learning_log_to_dict,
     news_to_dict,
@@ -46,6 +44,7 @@ from src.api.serializers import (
 )
 from src.core.config import settings
 from src.core.stats import dashboard_context, ring_data, week_completion
+from src.core.tags import ensure_tags, normalize_single_tag
 from src.core.taxonomy import CATEGORY_MODEL, all_tags, clear_category, rename_category
 from src.core.time_utils import today
 from src.core.xhs import XhsParseError, import_notes
@@ -56,7 +55,6 @@ from src.models import (
     Book,
     Category,
     FeedSource,
-    Goal,
     LearningItem,
     LearningLog,
     NewsDigest,
@@ -286,17 +284,24 @@ def list_tasks(
 
 @router.post("/tasks")
 def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> dict:
+    tags = normalize_single_tag(payload.tags)
     task = Task(
         title=payload.title,
         description=payload.description,
         status=payload.status,
         priority=payload.priority,
-        tags=payload.tags,
+        tags=tags,
         due_date=payload.due_date,
-        goal_id=payload.goal_id,
+        date_mode=payload.date_mode,
+        planned_date=payload.planned_date,
+        range_start=payload.range_start,
+        range_end=payload.range_end,
+        start_at=payload.start_at,
+        end_at=payload.end_at,
     )
     if task.status == "done":
         task.completed_at = datetime.now()
+    ensure_tags(db, tags)
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -314,6 +319,9 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     if "status" in data:
         _validate_status(data["status"], {"todo", "doing", "done"}, "status")
         task.completed_at = datetime.now() if data["status"] == "done" else None
+    if data.get("tags") is not None:
+        data["tags"] = normalize_single_tag(data["tags"])
+        ensure_tags(db, data["tags"])
     for field, value in data.items():
         setattr(task, field, value)
     db.commit()
@@ -329,21 +337,6 @@ def delete_task(task_id: int, db: Session = Depends(get_db)) -> dict:
     db.delete(task)
     db.commit()
     return ok(message="任务已删除")
-
-
-@router.get("/goals")
-def list_goals(db: Session = Depends(get_db)) -> dict:
-    goals = db.scalars(select(Goal).order_by(Goal.id)).all()
-    return ok([goal_to_dict(goal) for goal in goals])
-
-
-@router.post("/goals")
-def create_goal(payload: GoalCreate, db: Session = Depends(get_db)) -> dict:
-    goal = Goal(**payload.model_dump())
-    db.add(goal)
-    db.commit()
-    db.refresh(goal)
-    return ok(goal_to_dict(goal), "目标已创建")
 
 
 @router.get("/papers")

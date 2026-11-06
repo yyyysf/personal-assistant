@@ -1,3 +1,5 @@
+{% from "components/tag_picker.html" import tag_picker %}
+{% from "components/date_picker.html" import date_picker %}
 {% set is_edit = task is not none %}
 <form class="stack-form"
       hx-post="{{ '/schedule/tasks/' ~ task.id ~ '/edit' if is_edit else '/schedule/tasks/new' }}"
@@ -10,69 +12,29 @@
            value="{{ values.title }}" placeholder="例如：整理本周实验数据">
   </label>
 
-  <div class="field-row">
-    <label class="field">
-      <span>项目</span>
-      <select name="project_id" hx-get="/schedule/subprojects" hx-target="#task-subproject"
-              hx-swap="innerHTML" hx-include="this">
-        <option value="">未分类</option>
-        {% for project in projects %}
-        <option value="{{ project.id }}"
-                {{ 'selected' if values.project_id|string == project.id|string }}>{{ project.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field">
-      <span>子项目</span>
-      <select name="subproject_id" id="task-subproject">
-        <option value="">不选择</option>
-        {% for subproject in subprojects %}
-        <option value="{{ subproject.id }}"
-                {{ 'selected' if values.subproject_id|string == subproject.id|string }}>{{ subproject.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
+  <div class="field">
+    <span>标签（单选）</span>
+    {{ tag_picker('tags', values.tags, tag_options, tag_colors) }}
   </div>
 
-  <details class="form-details">
-    <summary>新建项目或子项目</summary>
-    <div class="field-row">
-      <label class="field">
-        <span>新项目名称</span>
-        <input type="text" name="new_project_name" maxlength="60"
-               value="{{ values.new_project_name }}" placeholder="留空则使用上方项目">
-      </label>
-      <label class="field">
-        <span>新项目颜色</span>
-        <input type="color" name="new_project_color" value="{{ values.new_project_color }}">
-      </label>
-    </div>
-    <label class="field">
-      <span>新子项目名称</span>
-      <input type="text" name="new_subproject_name" maxlength="60"
-             value="{{ values.new_subproject_name }}" placeholder="在所选或新建项目下创建">
-    </label>
-  </details>
-
-  <div class="field-row field-row-3">
-    <label class="field">
-      <span>日期</span>
-      <input type="date" name="date" required value="{{ values.date }}">
-    </label>
-    <label class="field">
-      <span>开始时间</span>
-      <input type="time" name="start_time" required value="{{ values.start_time }}">
-    </label>
-    <label class="field">
-      <span>结束时间</span>
-      <input type="time" name="end_time" required value="{{ values.end_time }}">
-    </label>
+  <div>
+    {{ date_picker(
+      mode=values.date_mode,
+      deadline_value=values.due_date,
+      single_value=values.planned_date,
+      start_value=values.range_start,
+      end_value=values.range_end,
+      time_row=True,
+      start_time_value=values.start_time,
+      end_time_value=values.end_time
+    ) }}
   </div>
-  <p class="footnote">结束时间早于或等于开始时间时，会自动顺延到次日。</p>
+  <p class="footnote">选择日期后填写时间段，会按时间段显示在时间轴；结束时间早于开始时间时自动顺延到次日。</p>
 
   <label class="field">
     <span>备注（可选）</span>
-    <textarea name="note" rows="3" placeholder="任务目标、资料链接或注意事项">{{ values.note }}</textarea>
+    <textarea name="description" rows="3"
+              placeholder="任务目标、资料链接或注意事项">{{ values.description }}</textarea>
   </label>
 
   <div class="modal-actions">

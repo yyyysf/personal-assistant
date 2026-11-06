@@ -1,21 +1,18 @@
 /* =========================================================
-   日程时间模块：时间轴、计时台、侧栏与统计
+   日程时间模块：时间轴、日视图详情、计时台与统计
    ========================================================= */
 
 .schedule-tabs { margin-top: 2px; }
 
-/* ---------- 双栏布局 ---------- */
+/* ---------- 布局 ---------- */
 .schedule-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
-.schedule-side {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
+.schedule-layout.is-day {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
 }
 .schedule-panel { padding-bottom: 16px; min-width: 0; }
 .schedule-toolbar {
@@ -126,9 +123,8 @@
   overflow: hidden;
   padding: 2px 6px;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--project-color, var(--accent));
+  border-left: 3px solid var(--tag-color, var(--accent));
   border-radius: 7px;
-  background: var(--surface-solid);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
   cursor: pointer;
   text-align: left;
@@ -174,73 +170,58 @@
   background: var(--danger);
 }
 
-/* ---------- Due Days / Memos ---------- */
-.due-list { display: flex; flex-direction: column; gap: 8px; }
-.due-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+/* ---------- 日视图详情卡片 ---------- */
+.day-detail { min-width: 0; }
+.day-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.day-card {
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-left: 3px solid var(--tag-color, var(--accent));
+  border-radius: 12px;
   background: var(--surface-soft);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.due-row.is-done { opacity: 0.72; }
-.due-main { display: flex; flex: 1; min-width: 0; flex-direction: column; }
-.due-title {
+.day-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
+.day-card.is-done { opacity: 0.68; }
+.day-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.day-card-head strong {
   overflow: hidden;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.due-title.is-done { color: var(--faint); text-decoration: line-through; }
-.due-date { color: var(--faint); font-size: 10.5px; }
-.due-chip {
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 600;
-  white-space: nowrap;
+.day-card-time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
-.due-chip--red { color: var(--danger); background: var(--danger-soft); }
-.due-chip--orange { color: var(--warning); background: var(--warning-soft); }
-.due-chip--yellow { color: #8a6d00; background: rgba(255, 204, 0, 0.16); }
-.due-chip--done { color: var(--success); background: var(--success-soft); }
-@media (prefers-color-scheme: dark) {
-  .due-chip--yellow { color: #ffd60a; background: rgba(255, 214, 10, 0.14); }
+.day-card-desc {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
-.due-actions,
-.memo-actions,
-.record-actions,
-.project-actions {
+.day-card-foot {
   display: flex;
   align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
-.due-actions form,
-.memo-actions form,
-.record-actions form,
-.project-actions form { margin: 0; display: inline-flex; }
-
-.memo-form { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 4px; }
-.memo-form .btn { align-self: flex-end; }
-.memo-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.memo-card {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-.memo-card.is-pinned {
-  border-color: rgba(255, 159, 10, 0.45);
-  background: var(--warning-soft);
-}
-.memo-card p { font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
-.memo-actions { justify-content: flex-end; margin-top: 6px; }
-.memo-date { margin-right: auto; color: var(--faint); font-size: 10.5px; }
-.memo-pin { color: var(--warning); }
+.day-card-status { color: var(--faint); font-size: 11px; }
+.day-card-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 
 /* ---------- 计时台 ---------- */
 .timer-layout {
@@ -302,6 +283,8 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+.record-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.record-actions form { margin: 0; display: inline-flex; }
 .project-dot {
   display: inline-block;
   width: 9px;
@@ -310,7 +293,6 @@
   background: var(--project-color, var(--accent));
   flex: 0 0 auto;
 }
-.project-dot--lg { width: 14px; height: 14px; }
 .record-main .project-dot,
 td .project-dot { margin-right: 6px; }
 
@@ -355,51 +337,11 @@ td .project-dot { margin-right: 6px; }
 
 /* ---------- 弹窗表单 ---------- */
 .field-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.form-details {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-.form-details summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-.modal-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.project-list { display: flex; flex-direction: column; gap: 8px; }
-.project-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-.project-main {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-.project-main .tag { margin-right: 4px; }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1120px) {
-  .schedule-layout,
+  .schedule-layout.is-day,
   .timer-layout { grid-template-columns: minmax(0, 1fr); }
-  .schedule-side { order: 2; }
 }
 @media (max-width: 760px) {
   .cal-grid,
@@ -410,4 +352,6 @@ td .project-dot { margin-right: 6px; }
   .field-row-3 { grid-template-columns: 1fr; }
   .timer-display { font-size: 48px; }
   .chart-box { height: 200px; }
+  .tag-manage-row { flex-wrap: wrap; }
+  .tag-manage-main { flex-basis: 100%; }
 }

@@ -82,25 +82,155 @@
   });
 
   document.addEventListener('alpine:init', function () {
-    Alpine.data('tagPicker', function (initial, existing) {
+    Alpine.data('tagPicker', function (initial, existing, colors) {
       return {
         tags: (initial || '').split(',').map(function (tag) { return tag.trim(); }).filter(Boolean),
         draft: '',
+        open: false,
         existing: existing || [],
+        colors: colors || {},
+        colorFor: function (tag) {
+          return this.colors[(tag || '').toLowerCase()] || '#A9C7E8';
+        },
         get suggestions() {
           var self = this;
-          return this.existing.filter(function (tag) { return self.tags.indexOf(tag) === -1; });
+          var query = this.draft.trim().toLowerCase();
+          return this.existing.filter(function (tag) {
+            if (self.tags.indexOf(tag) !== -1) return false;
+            return !query || tag.toLowerCase().indexOf(query) !== -1;
+          });
         },
         add: function () {
           var tag = this.draft.trim();
-          if (tag && this.tags.indexOf(tag) === -1) this.tags.push(tag);
+          if (tag) this.tags = [tag];
           this.draft = '';
+          this.open = false;
         },
         remove: function (tag) {
           this.tags = this.tags.filter(function (item) { return item !== tag; });
         },
+        pick: function (tag) {
+          this.tags = [tag];
+          this.draft = '';
+          this.open = false;
+        }
+      };
+    });
+
+    Alpine.data('tagFilter', function (selected, options, colors) {
+      return {
+        selected: Array.isArray(selected) ? selected.slice() : [],
+        options: options || [],
+        colors: colors || {},
+        open: false,
+        colorFor: function (tag) {
+          return this.colors[(tag || '').toLowerCase()] || '#A9C7E8';
+        },
+        isSelected: function (tag) {
+          return this.selected.indexOf(tag) !== -1;
+        },
         toggle: function (tag) {
-          if (this.tags.indexOf(tag) === -1) this.tags.push(tag);
+          var index = this.selected.indexOf(tag);
+          if (index === -1) this.selected.push(tag);
+          else this.selected.splice(index, 1);
+        }
+      };
+    });
+
+    function pad(value) {
+      return value < 10 ? '0' + value : String(value);
+    }
+
+    function dateString(year, month, day) {
+      return year + '-' + pad(month + 1) + '-' + pad(day);
+    }
+
+    Alpine.data('calendarField', function (initial, withTime) {
+      var raw = initial || '';
+      var datePart = raw.length >= 10 ? raw.slice(0, 10) : '';
+      var timePart = raw.indexOf('T') > -1 ? raw.slice(11, 16) : '09:00';
+      var base = datePart ? new Date(datePart + 'T00:00:00') : new Date();
+      var weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+      return {
+        value: datePart,
+        time: timePart,
+        withTime: !!withTime,
+        open: false,
+        viewYear: base.getFullYear(),
+        viewMonth: base.getMonth(),
+        get hiddenValue() {
+          if (!this.value) return '';
+          return this.withTime ? this.value + 'T' + this.time : this.value;
+        },
+        get display() {
+          if (!this.value) return '';
+          var parts = this.value.split('-');
+          var date = new Date(this.value + 'T00:00:00');
+          var text = parts[0] + '年' + parseInt(parts[1], 10) + '月' +
+            parseInt(parts[2], 10) + '日 周' + weekdays[date.getDay()];
+          return this.withTime ? text + ' ' + this.time : text;
+        },
+        get monthLabel() {
+          return this.viewYear + '年' + (this.viewMonth + 1) + '月';
+        },
+        get weeks() {
+          var first = new Date(this.viewYear, this.viewMonth, 1);
+          var offset = (first.getDay() + 6) % 7;
+          var start = new Date(this.viewYear, this.viewMonth, 1 - offset);
+          var now = new Date();
+          var today = dateString(now.getFullYear(), now.getMonth(), now.getDate());
+          var cells = [];
+          for (var i = 0; i < 42; i++) {
+            var current = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+            var iso = dateString(current.getFullYear(), current.getMonth(), current.getDate());
+            cells.push({
+              day: current.getDate(),
+              date: iso,
+              inMonth: current.getMonth() === this.viewMonth,
+              isToday: iso === today,
+              isSelected: iso === this.value
+            });
+          }
+          return cells;
+        },
+        toggle: function () {
+          if (!this.open && this.value) {
+            var parts = this.value.split('-');
+            this.viewYear = parseInt(parts[0], 10);
+            this.viewMonth = parseInt(parts[1], 10) - 1;
+          }
+          this.open = !this.open;
+        },
+        prevMonth: function () {
+          if (this.viewMonth === 0) {
+            this.viewMonth = 11;
+            this.viewYear -= 1;
+          } else {
+            this.viewMonth -= 1;
+          }
+        },
+        nextMonth: function () {
+          if (this.viewMonth === 11) {
+            this.viewMonth = 0;
+            this.viewYear += 1;
+          } else {
+            this.viewMonth += 1;
+          }
+        },
+        select: function (iso) {
+          this.value = iso;
+          if (!this.withTime) this.open = false;
+        },
+        pickToday: function () {
+          var now = new Date();
+          this.value = dateString(now.getFullYear(), now.getMonth(), now.getDate());
+          this.viewYear = now.getFullYear();
+          this.viewMonth = now.getMonth();
+          this.open = false;
+        },
+        clear: function () {
+          this.value = '';
+          this.open = false;
         }
       };
     });

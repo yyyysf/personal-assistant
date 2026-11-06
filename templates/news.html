@@ -74,39 +74,5 @@
   </div>
 </form>
 
-<div class="split-layout">
-  <div class="split-main">
-    {% include "partials/news_content.html" %}
-  </div>
-
-  <aside class="split-side">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>资讯工作流</h2><p class="panel-sub">从抓取到中文简报</p></div>
-      </header>
-      <ol class="step-list">
-        <li><span class="step-num">1</span><div><strong>聚合</strong><p>抓取 RSS 订阅源，自动去重并保留原文链接。</p></div></li>
-        <li><span class="step-num">2</span><div><strong>中文</strong><p>打开详情时按需翻译标题与摘要并缓存。</p></div></li>
-        <li><span class="step-num">3</span><div><strong>简报</strong><p>每天生成一份中文 AI 前沿简报。</p></div></li>
-        <li><span class="step-num">4</span><div><strong>归档</strong><p>在历史简报中回看任意一天的要点。</p></div></li>
-      </ol>
-    </section>
-
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>订阅源</h2><p class="panel-sub">{{ feed_sources|length }} 个数据库订阅源</p></div>
-        <button class="btn btn-tiny btn-ghost" type="button"
-                data-modal-url="/news/sources" data-modal-title="订阅源设置">管理</button>
-      </header>
-      <ul class="check-list">
-        {% for source in feed_sources %}
-        <li>{{ source.name or source.url }} <span class="badge {{ 'badge-ok' if source.enabled else 'badge-muted' }}">{{ '启用' if source.enabled else '停用' }}</span></li>
-        {% else %}
-        <li>还没有数据库订阅源，可点击「管理」添加。</li>
-        {% endfor %}
-      </ul>
-      <p class="footnote">抓取时会与 .env 中的订阅源合并去重；每日 08:40 自动聚合。</p>
-    </section>
-  </aside>
-</div>
+{% include "partials/news_content.html" %}
 {% endblock %}

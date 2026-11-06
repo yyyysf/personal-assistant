@@ -5,20 +5,18 @@
 
 {% block styles %}
 <link rel="stylesheet" href="/static/css/schedule.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+<script src="/static/js/vendor/chart.umd.js" defer></script>
 {% endblock %}
 
 {% block content %}
 <section class="page-actions">
   <div class="page-actions-copy">
     <h2>先安排，再专注，最后看见时间去了哪里</h2>
-    <p>计划任务落到时间轴，计时结束自动归档为 Done 记录；项目与子项目帮你区分每条时间线。</p>
+    <p>任务与「任务管理」同源：任一页面的新增、编辑和标签调整都会同步到另一侧，标签颜色自动带到时间轴。</p>
   </div>
   <div class="action-row">
-    <button class="btn btn-ghost" type="button"
-            data-modal-url="/schedule/projects" data-modal-title="项目管理">项目管理</button>
     <button class="btn btn-primary" type="button"
-            data-modal-url="/schedule/tasks/new" data-modal-title="新增时间任务">+ 新增任务</button>
+            data-modal-url="/schedule/tasks/new" data-modal-title="新增任务">+ 新增任务</button>
   </div>
 </section>
 

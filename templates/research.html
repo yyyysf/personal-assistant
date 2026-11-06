@@ -74,44 +74,5 @@
   </div>
 </form>
 
-<div class="split-layout">
-  <div class="split-main">
-    {% include "partials/research_list.html" %}
-  </div>
-
-  <aside class="split-side">
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>科研闭环</h2><p class="panel-sub">推荐的最小工作流</p></div>
-      </header>
-      <ol class="step-list">
-        <li><span class="step-num">1</span><div><strong>抓取</strong><p>每日自动抓取 arXiv cs.AI，也可手动触发。</p></div></li>
-        <li><span class="step-num">2</span><div><strong>中文摘要</strong><p>DeepSeek 同时生成中文标题与 2-3 句摘要。</p></div></li>
-        <li><span class="step-num">3</span><div><strong>入库</strong><p>一键写入 Zotero 文库并保留 arXiv 链接。</p></div></li>
-        <li><span class="step-num">4</span><div><strong>复盘</strong><p>在详情弹窗中记录、编辑阅读笔记。</p></div></li>
-      </ol>
-    </section>
-
-    <section class="panel">
-      <header class="panel-head">
-        <div><h2>集成状态</h2><p class="panel-sub">本地配置</p></div>
-      </header>
-      <div class="status-list">
-        <div class="status-row">
-          <span>DeepSeek 摘要</span>
-          <span class="badge {{ 'badge-ok' if llm_ready else 'badge-warn' }}">{{ '可用' if llm_ready else '本地降级' }}</span>
-        </div>
-        <div class="status-row">
-          <span>Zotero 入库</span>
-          <span class="badge {{ 'badge-ok' if zotero_ready else 'badge-muted' }}">{{ '已配置' if zotero_ready else '待配置' }}</span>
-        </div>
-        <div class="status-row">
-          <span>定时抓取</span>
-          <span class="badge badge-muted">每日 08:05</span>
-        </div>
-      </div>
-      <p class="footnote">定时任务可在 .env 中通过 ARXIV_FETCH_HOUR / ARXIV_FETCH_MINUTE 调整。</p>
-    </section>
-  </aside>
-</div>
+{% include "partials/research_list.html" %}
 {% endblock %}

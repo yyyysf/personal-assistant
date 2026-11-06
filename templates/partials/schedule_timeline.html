@@ -7,7 +7,7 @@
 {% set page_base = '/schedule?tab=timeline&view=' ~ view ~ '&date=' %}
 {% set today_url = today.isoformat() %}
 
-<div class="schedule-layout">
+<div class="schedule-layout{{ ' is-day' if view == 'day' }}">
   <section class="panel schedule-panel">
     <header class="panel-head schedule-toolbar">
       <div class="schedule-nav">
@@ -55,14 +55,14 @@
 
           {% for seg in day.segments %}
           <article class="cal-task{{ ' is-done' if seg.task.is_done }}"
-                   style="top: {{ seg.top }}%; height: {{ seg.height }}%; left: {{ seg.left }}%; width: {{ seg.width }}%; --project-color: {{ seg.color }};"
+                   style="top: {{ seg.top }}%; height: {{ seg.height }}%; left: {{ seg.left }}%; width: {{ seg.width }}%; --tag-color: {{ seg.color }}; background: {{ seg.color }}26;"
                    data-detail-url="/schedule/tasks/{{ seg.task.id }}/detail"
                    data-detail-title="任务详情"
                    title="{{ seg.time_label }} · {{ seg.task.title }}">
             <span class="cal-task-title">{{ seg.task.title }}</span>
             <span class="cal-task-meta">
               <span>{{ seg.time_label }}</span>
-              {% if seg.task.subproject %}<span class="cal-task-sub">{{ seg.task.subproject.name }}</span>{% endif %}
+              {% if seg.task.tag_list %}<span class="cal-task-sub">{{ seg.task.tag_list|join(' · ') }}</span>{% endif %}
             </span>
           </article>
           {% endfor %}
@@ -77,7 +77,40 @@
     <p class="footnote">点击空白时段新增任务，点击任务块查看详情或开始专注计时；已完成记录会以半透明块保留在时间轴上。</p>
   </section>
 
-  <aside class="schedule-side">
-    {% include "partials/schedule_side.html" %}
+  {% if view == 'day' %}
+  <aside class="panel day-detail">
+    <header class="panel-head">
+      <div>
+        <h2>当天任务</h2>
+        <p class="panel-sub">{{ range_start|d }} · 共 {{ day_cards|length }} 项</p>
+      </div>
+      <span class="panel-hint">与任务管理同源</span>
+    </header>
+    <div class="day-list">
+      {% for seg in day_cards %}
+      <article class="day-card{{ ' is-done' if seg.task.is_done }}"
+               style="--tag-color: {{ seg.color }};"
+               data-detail-url="/schedule/tasks/{{ seg.task.id }}/detail"
+               data-detail-title="任务详情">
+        <div class="day-card-head">
+          <strong>{{ seg.task.title }}</strong>
+          <span class="day-card-time">{{ seg.time_label }}</span>
+        </div>
+        {% if seg.task.description %}<p class="day-card-desc">{{ seg.task.description }}</p>{% endif %}
+        <div class="day-card-foot">
+          <span class="day-card-status">{{ '已完成' if seg.task.is_done else ('进行中' if seg.task.status == 'doing' else '待办') }}</span>
+          <span class="day-card-tags">
+            {% for tag in seg.task.tag_list %}
+            <span class="tag-colored"
+                  style="--tag-color: {{ tag_colors.get(tag|lower, '#A9C7E8') }}">{{ tag }}</span>
+            {% endfor %}
+          </span>
+        </div>
+      </article>
+      {% else %}
+      <p class="empty-inline">这一天还没有任务，点击左侧空白时段新增。</p>
+      {% endfor %}
+    </div>
   </aside>
+  {% endif %}
 </div>

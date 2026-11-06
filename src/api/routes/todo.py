@@ -1,17 +1,27 @@
-"""Todo & 目标管理页面：看板、目标、筛选、分页与弹窗 CRUD。"""
+"""任务管理页面：看板、筛选、分页、标签管理与弹窗 CRUD。"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from src.api.common import parse_date, parse_dt, parse_int
+from src.api.common import parse_date, parse_dt
 from src.api.deps import get_db, render, render_partial
 from src.api.pagination import paginate
-from src.core.taxonomy import all_tags, category_names, tag_filter
-from src.models import Goal, Task
+from src.core.tags import (
+    all_task_tags,
+    clean_tag,
+    ensure_tags,
+    normalize_single_tag,
+    rename_tag,
+    set_tag_color,
+    tag_color_map,
+    task_tag_counts,
+)
+from src.core.taxonomy import tag_filter
+from src.models import Tag, Task
 
 router = APIRouter()
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
@@ -31,16 +41,7 @@ def _task_order():
     return priority, Task.due_date.is_(None), Task.due_date, Task.id.desc()
 
 
-def _filter_tasks(
-    stmt,
-    category: str,
-    tags: list[str],
-    date_from: str,
-    date_to: str,
-    q: str,
-):
-    if category:
-        stmt = stmt.where(Task.category == category)
+def _filter_tasks(stmt, tags: list[str], date_from: str, date_to: str, q: str):
     for tag in tags:
         stmt = stmt.where(tag_filter(Task.tags, tag))
     start_date = parse_date(date_from)
@@ -67,21 +68,8 @@ def _filter_tasks(
     return stmt
 
 
-def _filter_goals(stmt, category: str, tags: list[str], q: str):
-    if category:
-        stmt = stmt.where(Goal.category == category)
-    for tag in tags:
-        stmt = stmt.where(tag_filter(Goal.tags, tag))
-    if q.strip():
-        pattern = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Goal.title.ilike(pattern), Goal.description.ilike(pattern)))
-    return stmt
-
-
 def todo_context(
     db: Session,
-    tab: str = "board",
-    category: str = "",
     tags: list[str] | None = None,
     date_from: str = "",
     date_to: str = "",
@@ -89,11 +77,10 @@ def todo_context(
     page_todo: int = 1,
     page_doing: int = 1,
     page_done: int = 1,
-    page_goals: int = 1,
 ) -> dict:
     tags = [tag for tag in (tags or []) if tag]
     base = select(Task).where(Task.archived.is_(False))
-    filtered = _filter_tasks(base, category, tags, date_from, date_to, q)
+    filtered = _filter_tasks(base, tags, date_from, date_to, q)
 
     columns = []
     for key, label, param, page_number in (
@@ -111,9 +98,6 @@ def todo_context(
             }
         )
 
-    goals_stmt = _filter_goals(select(Goal), category, tags, q).order_by(Goal.id)
-    goals_page = paginate(db, goals_stmt, page_goals)
-
     archived = db.scalars(
         select(Task)
         .where(Task.archived.is_(True))
@@ -122,19 +106,15 @@ def todo_context(
     ).all()
 
     return {
-        "tab": tab if tab in {"board", "goals"} else "board",
         "filters": {
-            "category": category,
             "tags": tags,
             "date_from": date_from,
             "date_to": date_to,
             "q": q,
         },
-        "categories": category_names(db, "task"),
-        "tag_options": all_tags(db, "task"),
+        "tag_options": all_task_tags(db),
+        "tag_colors": tag_color_map(db),
         "columns": columns,
-        "goals": db.scalars(select(Goal).order_by(Goal.id)).all(),
-        "goals_page": goals_page,
         "archived": archived,
         "error": "",
     }
@@ -143,8 +123,6 @@ def todo_context(
 def _content_response(
     request: Request,
     db: Session,
-    tab: str = "board",
-    category: str = "",
     tags: list[str] | None = None,
     date_from: str = "",
     date_to: str = "",
@@ -152,13 +130,10 @@ def _content_response(
     page_todo: int = 1,
     page_doing: int = 1,
     page_done: int = 1,
-    page_goals: int = 1,
     error: str = "",
 ) -> HTMLResponse:
     context = todo_context(
         db,
-        tab=tab,
-        category=category,
         tags=tags,
         date_from=date_from,
         date_to=date_to,
@@ -166,7 +141,6 @@ def _content_response(
         page_todo=page_todo,
         page_doing=page_doing,
         page_done=page_done,
-        page_goals=page_goals,
     )
     context["error"] = error
     return render_partial(request, "partials/todo_content.html", context)
@@ -175,18 +149,8 @@ def _content_response(
 def _task_form_context(db: Session, task: Task | None = None) -> dict:
     return {
         "task": task,
-        "goals": db.scalars(select(Goal).order_by(Goal.id)).all(),
-        "categories": category_names(db, "task"),
-        "tag_options": all_tags(db, "task"),
-        "error": "",
-    }
-
-
-def _goal_form_context(db: Session, goal: Goal | None = None) -> dict:
-    return {
-        "goal": goal,
-        "categories": category_names(db, "task"),
-        "tag_options": all_tags(db, "task"),
+        "tag_options": all_task_tags(db),
+        "tag_colors": tag_color_map(db),
         "error": "",
     }
 
@@ -201,33 +165,23 @@ def _modal_error(request: Request, template: str, context: dict, message: str) -
 def _task_payload(
     title: str,
     description: str,
-    priority: str,
-    category: str,
     tags: str,
     date_mode: str,
     due_date: str,
     planned_date: str,
     range_start: str,
     range_end: str,
-    progress: int,
-    goal_id: str,
-    status: str,
 ) -> dict:
-    mode = date_mode if date_mode in DATE_MODES else "deadline"
+    mode = date_mode if date_mode in DATE_MODES else "single"
     return {
         "title": title.strip()[:200],
         "description": description.strip(),
-        "priority": priority if priority in PRIORITY_ORDER else "medium",
-        "category": category.strip()[:60],
-        "tags": tags.strip()[:200],
-        "status": status if status in TASK_STATUSES else "todo",
+        "tags": normalize_single_tag(tags),
         "date_mode": mode,
         "due_date": parse_dt(due_date) if mode == "deadline" else None,
         "planned_date": parse_date(planned_date) if mode == "single" else None,
         "range_start": parse_date(range_start) if mode == "range" else None,
         "range_end": parse_date(range_end) if mode == "range" else None,
-        "progress": max(0, min(100, progress)),
-        "goal_id": parse_int(goal_id),
     }
 
 
@@ -241,6 +195,22 @@ def _validate_task(payload: dict) -> str:
     return ""
 
 
+def _sync_schedule_dates(task: Task, payload: dict) -> None:
+    """任务页改日期时保持时间轴锚点一致；非单日任务交给时间轴按日期推导。"""
+    if payload["date_mode"] == "single" and payload["planned_date"]:
+        if task.start_at is not None:
+            duration = timedelta(hours=1)
+            if task.end_at and task.end_at > task.start_at:
+                duration = task.end_at - task.start_at
+            start = datetime.combine(payload["planned_date"], task.start_at.time())
+            task.start_at = start
+            task.end_at = start + duration
+    elif task.status != "done":
+        task.start_at = None
+        task.end_at = None
+        task.duration_seconds = 0
+
+
 def _apply_status(task: Task, status: str) -> None:
     task.status = status
     task.completed_at = datetime.now() if status == "done" else None
@@ -251,8 +221,6 @@ def _apply_status(task: Task, status: str) -> None:
 @router.get("/todo", response_class=HTMLResponse)
 def todo_page(
     request: Request,
-    tab: str = "board",
-    category: str = "",
     tag: list[str] | None = None,
     date_from: str = "",
     date_to: str = "",
@@ -260,13 +228,10 @@ def todo_page(
     page_todo: int = 1,
     page_doing: int = 1,
     page_done: int = 1,
-    page_goals: int = 1,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     context = todo_context(
         db,
-        tab=tab,
-        category=category,
         tags=tag,
         date_from=date_from,
         date_to=date_to,
@@ -274,7 +239,6 @@ def todo_page(
         page_todo=page_todo,
         page_doing=page_doing,
         page_done=page_done,
-        page_goals=page_goals,
     )
     return render(request, "todo.html", context, active="todo")
 
@@ -282,8 +246,6 @@ def todo_page(
 @router.get("/todo/content", response_class=HTMLResponse)
 def todo_content(
     request: Request,
-    tab: str = "board",
-    category: str = "",
     tag: list[str] | None = None,
     date_from: str = "",
     date_to: str = "",
@@ -291,14 +253,11 @@ def todo_content(
     page_todo: int = 1,
     page_doing: int = 1,
     page_done: int = 1,
-    page_goals: int = 1,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     return _content_response(
         request,
         db,
-        tab=tab,
-        category=category,
         tags=tag,
         date_from=date_from,
         date_to=date_to,
@@ -306,7 +265,6 @@ def todo_content(
         page_todo=page_todo,
         page_doing=page_doing,
         page_done=page_done,
-        page_goals=page_goals,
     )
 
 
@@ -320,42 +278,31 @@ def task_create(
     request: Request,
     title: str = Form(""),
     description: str = Form(""),
-    priority: str = Form("medium"),
-    category: str = Form(""),
     tags: str = Form(""),
-    date_mode: str = Form("deadline"),
+    date_mode: str = Form("single"),
     due_date: str = Form(""),
     planned_date: str = Form(""),
     range_start: str = Form(""),
     range_end: str = Form(""),
-    progress: int = Form(0),
-    goal_id: str = Form(""),
-    status: str = Form("todo"),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     payload = _task_payload(
         title,
         description,
-        priority,
-        category,
         tags,
         date_mode,
         due_date,
         planned_date,
         range_start,
         range_end,
-        progress,
-        goal_id,
-        status,
     )
     error = _validate_task(payload)
     if error:
         return _modal_error(
             request, "partials/modals/todo_task_form.html", _task_form_context(db), error
         )
+    ensure_tags(db, payload["tags"])
     task = Task(**payload)
-    if task.status == "done":
-        task.completed_at = datetime.now()
     db.add(task)
     db.commit()
     return HTMLResponse("", headers=MODAL_DONE)
@@ -366,7 +313,11 @@ def task_detail(task_id: int, request: Request, db: Session = Depends(get_db)) -
     task = db.get(Task, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    return render_partial(request, "partials/modals/todo_task_detail.html", {"task": task})
+    return render_partial(
+        request,
+        "partials/modals/todo_task_detail.html",
+        {"task": task, "tag_colors": tag_color_map(db)},
+    )
 
 
 @router.get("/todo/tasks/{task_id}/edit", response_class=HTMLResponse)
@@ -385,17 +336,12 @@ def task_update(
     request: Request,
     title: str = Form(""),
     description: str = Form(""),
-    priority: str = Form("medium"),
-    category: str = Form(""),
     tags: str = Form(""),
-    date_mode: str = Form("deadline"),
+    date_mode: str = Form("single"),
     due_date: str = Form(""),
     planned_date: str = Form(""),
     range_start: str = Form(""),
     range_end: str = Form(""),
-    progress: int = Form(0),
-    goal_id: str = Form(""),
-    status: str = Form("todo"),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     task = db.get(Task, task_id)
@@ -404,28 +350,22 @@ def task_update(
     payload = _task_payload(
         title,
         description,
-        priority,
-        category,
         tags,
         date_mode,
         due_date,
         planned_date,
         range_start,
         range_end,
-        progress,
-        goal_id,
-        status,
     )
     error = _validate_task(payload)
     if error:
         return _modal_error(
             request, "partials/modals/todo_task_form.html", _task_form_context(db, task), error
         )
-    previous_status = task.status
     for field, value in payload.items():
         setattr(task, field, value)
-    if task.status != previous_status or task.status == "done":
-        task.completed_at = datetime.now() if task.status == "done" else None
+    _sync_schedule_dates(task, payload)
+    ensure_tags(db, payload["tags"])
     db.commit()
     return HTMLResponse("", headers=MODAL_DONE)
 
@@ -436,22 +376,20 @@ def create_task_legacy(
     title: str = Form(""),
     description: str = Form(""),
     priority: str = Form("medium"),
-    category: str = Form(""),
     tags: str = Form(""),
     due_date: str = Form(""),
-    goal_id: str = Form(""),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     if not title.strip():
         return _content_response(request, db, error="任务标题不能为空")
+    clean_tags = normalize_single_tag(tags)
+    ensure_tags(db, clean_tags)
     task = Task(
         title=title.strip()[:200],
         description=description.strip(),
         priority=priority if priority in PRIORITY_ORDER else "medium",
-        category=category.strip()[:60],
-        tags=tags.strip()[:200],
+        tags=clean_tags,
         due_date=parse_dt(due_date),
-        goal_id=parse_int(goal_id),
     )
     db.add(task)
     db.commit()
@@ -495,117 +433,82 @@ def archive_done(db: Session = Depends(get_db)) -> HTMLResponse:
     return HTMLResponse("", headers=REFRESH)
 
 
-@router.get("/todo/goals/new", response_class=HTMLResponse)
-def goal_new(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    return render_partial(request, "partials/modals/todo_goal_form.html", _goal_form_context(db))
+# ---------- 标签管理 ----------
 
 
-@router.post("/todo/goals/new", response_class=HTMLResponse)
-def goal_create(
+TAG_REFRESH = {"HX-Trigger": '{"list:refresh": true}'}
+
+
+def _tag_manage_context(db: Session, error: str = "") -> dict:
+    ensure_tags(db, all_task_tags(db))
+    db.commit()
+    counts = task_tag_counts(db)
+    tags = db.scalars(select(Tag).order_by(func.lower(Tag.name), Tag.id)).all()
+    return {
+        "tag_rows": [{"tag": tag, "count": counts[tag.name.casefold()]} for tag in tags],
+        "error": error,
+    }
+
+
+def _tag_response(request: Request, db: Session, error: str = "") -> HTMLResponse:
+    response = render_partial(request, "partials/tag_manage.html", _tag_manage_context(db, error))
+    response.headers.update(TAG_REFRESH)
+    return response
+
+
+@router.get("/todo/tags/manage", response_class=HTMLResponse)
+def tag_manage(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _tag_response(request, db)
+
+
+@router.post("/todo/tags/new", response_class=HTMLResponse)
+def tag_create(
     request: Request,
-    title: str = Form(""),
-    description: str = Form(""),
-    category: str = Form(""),
-    tags: str = Form(""),
-    target_date: str = Form(""),
-    progress: int = Form(0),
+    name: str = Form(""),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    if not title.strip():
-        return _modal_error(
-            request,
-            "partials/modals/todo_goal_form.html",
-            _goal_form_context(db),
-            "目标标题不能为空",
-        )
-    goal = Goal(
-        title=title.strip()[:200],
-        description=description.strip(),
-        category=category.strip()[:60],
-        tags=tags.strip()[:200],
-        target_date=parse_date(target_date),
-        progress=max(0, min(100, progress)),
-    )
-    if goal.progress >= 100:
-        goal.completed_at = datetime.now()
-    db.add(goal)
+    clean = clean_tag(name)
+    if not clean:
+        return _tag_response(request, db, "标签名称不能为空")
+    exists = any(tag.name.casefold() == clean.casefold() for tag in db.scalars(select(Tag)).all())
+    if exists:
+        return _tag_response(request, db, "该标签已存在")
+    ensure_tags(db, [clean])
     db.commit()
-    return HTMLResponse("", headers=MODAL_DONE)
+    return _tag_response(request, db)
 
 
-@router.get("/todo/goals/{goal_id}/detail", response_class=HTMLResponse)
-def goal_detail(goal_id: int, request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    goal = db.get(Goal, goal_id)
-    if goal is None:
-        raise HTTPException(status_code=404, detail="目标不存在")
-    return render_partial(request, "partials/modals/todo_goal_detail.html", {"goal": goal})
-
-
-@router.get("/todo/goals/{goal_id}/edit", response_class=HTMLResponse)
-def goal_edit_form(goal_id: int, request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    goal = db.get(Goal, goal_id)
-    if goal is None:
-        raise HTTPException(status_code=404, detail="目标不存在")
-    return render_partial(
-        request, "partials/modals/todo_goal_form.html", _goal_form_context(db, goal)
-    )
-
-
-@router.post("/todo/goals/{goal_id}/edit", response_class=HTMLResponse)
-def goal_update(
-    goal_id: int,
+@router.post("/todo/tags/{tag_id}/rename", response_class=HTMLResponse)
+def tag_rename(
+    tag_id: int,
     request: Request,
-    title: str = Form(""),
-    description: str = Form(""),
-    category: str = Form(""),
-    tags: str = Form(""),
-    target_date: str = Form(""),
-    progress: int = Form(0),
+    name: str = Form(""),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    goal = db.get(Goal, goal_id)
-    if goal is None:
-        raise HTTPException(status_code=404, detail="目标不存在")
-    if not title.strip():
-        return _modal_error(
-            request,
-            "partials/modals/todo_goal_form.html",
-            _goal_form_context(db, goal),
-            "目标标题不能为空",
-        )
-    goal.title = title.strip()[:200]
-    goal.description = description.strip()
-    goal.category = category.strip()[:60]
-    goal.tags = tags.strip()[:200]
-    goal.target_date = parse_date(target_date)
-    goal.progress = max(0, min(100, progress))
-    goal.completed_at = datetime.now() if goal.progress >= 100 else None
+    tag = db.get(Tag, tag_id)
+    if tag is None:
+        raise HTTPException(status_code=404, detail="标签不存在")
+    error = rename_tag(db, tag, name)
+    if error:
+        db.rollback()
+        return _tag_response(request, db, error)
     db.commit()
-    return HTMLResponse("", headers=MODAL_DONE)
+    return _tag_response(request, db)
 
 
-@router.post("/todo/goals/{goal_id}/progress", response_class=HTMLResponse)
-def update_goal_progress(
-    goal_id: int,
-    progress: int = Form(...),
+@router.post("/todo/tags/{tag_id}/recolor", response_class=HTMLResponse)
+def tag_recolor(
+    tag_id: int,
+    request: Request,
+    color: str = Form(""),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    goal = db.get(Goal, goal_id)
-    if goal is None:
-        raise HTTPException(status_code=404, detail="目标不存在")
-    goal.progress = max(0, min(100, progress))
-    goal.completed_at = datetime.now() if goal.progress >= 100 else None
+    tag = db.get(Tag, tag_id)
+    if tag is None:
+        raise HTTPException(status_code=404, detail="标签不存在")
+    error = set_tag_color(tag, color)
+    if error:
+        db.rollback()
+        return _tag_response(request, db, error)
     db.commit()
-    return HTMLResponse("", headers=REFRESH)
-
-
-@router.post("/todo/goals/{goal_id}/delete", response_class=HTMLResponse)
-def delete_goal(goal_id: int, db: Session = Depends(get_db)) -> HTMLResponse:
-    goal = db.get(Goal, goal_id)
-    if goal is None:
-        raise HTTPException(status_code=404, detail="目标不存在")
-    for task in goal.tasks:
-        task.goal_id = None
-    db.delete(goal)
-    db.commit()
-    return HTMLResponse("", headers=MODAL_DONE)
+    return _tag_response(request, db)
