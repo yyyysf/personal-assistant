@@ -8,6 +8,8 @@ PRIORITIES = {"high", "medium", "low"}
 TASK_STATUSES = {"todo", "doing", "done"}
 BOOK_STATUSES = {"want", "reading", "finished"}
 CATEGORIES = {"video", "music"}
+POINT_STATUSES = {"want", "visited"}
+POINT_CATEGORIES = {"景点", "美食", "住宿", "交通", "商场", "娱乐"}
 
 
 class TaskCreate(BaseModel):
@@ -107,24 +109,41 @@ class PlaceCreate(BaseModel):
     lat: float = Field(default=0.0, ge=-90, le=90)
     lng: float = Field(default=0.0, ge=-180, le=180)
     visited: bool = False
+    point_status: str = "want"
+    point_category: str = ""
+    standard_address: str = ""
+    amap_poi_id: str = ""
+    source_note_url: str = ""
+    tags: str = ""
     visit_date: date | None = None
     notes: str = ""
+
+    @field_validator("point_status")
+    @classmethod
+    def check_point_status(cls, value: str) -> str:
+        if value not in POINT_STATUSES:
+            raise ValueError("point_status 只能是 want / visited")
+        return value
+
+    @field_validator("point_category")
+    @classmethod
+    def check_point_category(cls, value: str) -> str:
+        if value and value not in POINT_CATEGORIES:
+            raise ValueError("point_category 不在内置分类中")
+        return value
 
 
 class PlaceUpdate(BaseModel):
     name: str | None = None
     notes: str | None = None
     visited: bool | None = None
+    point_status: str | None = None
+    point_category: str | None = None
+    standard_address: str | None = None
+    amap_poi_id: str | None = None
+    source_note_url: str | None = None
+    tags: str | None = None
     visit_date: date | None = None
-
-
-class TripCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    start_date: date | None = None
-    end_date: date | None = None
-    status: str = "draft"
-    itinerary: str = ""
-    notes: str = ""
 
 
 class CategoryCreate(BaseModel):

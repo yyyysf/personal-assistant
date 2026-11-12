@@ -4,6 +4,7 @@ from typing import Any
 
 from src.models import (
     Book,
+    Journey,
     LearningItem,
     LearningLog,
     LearningTrack,
@@ -14,7 +15,6 @@ from src.models import (
     Place,
     ReadingNote,
     Task,
-    TripPlan,
     WeeklyReview,
 )
 
@@ -198,6 +198,12 @@ def place_to_dict(place: Place) -> dict:
         "visit_end_date": _iso(place.visit_end_date),
         "rating": place.rating,
         "category": place.category,
+        "point_status": place.point_status,
+        "point_status_label": place.status_label,
+        "point_category": place.point_category,
+        "standard_address": place.standard_address,
+        "amap_poi_id": place.amap_poi_id,
+        "source_note_url": place.source_note_url,
         "tags": place.tag_list,
         "photos": place.photo_list,
         "notes": place.notes,
@@ -205,18 +211,27 @@ def place_to_dict(place: Place) -> dict:
     }
 
 
-def trip_to_dict(trip: TripPlan) -> dict:
+def journey_to_dict(journey: Journey) -> dict:
     return {
-        "id": trip.id,
-        "title": trip.title,
-        "start_date": _iso(trip.start_date),
-        "end_date": _iso(trip.end_date),
-        "status": trip.status,
-        "category": trip.category,
-        "tags": trip.tag_list,
-        "itinerary": trip.itinerary,
-        "notes": trip.notes,
-        "created_at": _iso(trip.created_at),
+        "id": journey.id,
+        "title": journey.title,
+        "status": journey.status,
+        "status_label": journey.status_label,
+        "status_color": journey.status_color,
+        "start_date": _iso(journey.start_date),
+        "end_date": _iso(journey.end_date),
+        "date_label": journey.date_label,
+        "mood": journey.mood,
+        "mood_label": journey.mood_label,
+        "mood_color": journey.mood_color,
+        "description": journey.description,
+        "photos": journey.photo_list,
+        "cost_transport": journey.cost_transport,
+        "cost_lodging": journey.cost_lodging,
+        "cost_food": journey.cost_food,
+        "cost_other": journey.cost_other,
+        "total_cost": journey.total_cost,
+        "created_at": _iso(journey.created_at),
     }
 
 
@@ -294,7 +309,7 @@ def dashboard_to_dict(context: dict) -> dict:
         },
         "travel": {
             "places": [place_to_dict(place) for place in travel.get("places") or []],
-            "trips": [trip_to_dict(trip) for trip in travel.get("trips") or []],
+            "journeys": [journey_to_dict(journey) for journey in travel.get("journeys") or []],
             "stats": travel.get("stats", {}),
         },
         "todo": {

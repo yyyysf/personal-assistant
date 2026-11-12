@@ -221,26 +221,32 @@
 
       <div class="tab-body" x-show="tab === 'travel'" x-cloak>
         <div class="inline-stats">
-          <span><strong>{{ travel.stats.visited }}</strong> / {{ travel.stats.places }} 个足迹</span>
-          <span><strong>{{ travel.stats.trips }}</strong> 份行程草稿</span>
+          <span><strong>{{ travel.stats.journeys }}</strong> 趟旅程</span>
+          <span><strong>{{ travel.stats.journey_want }}</strong> 想去</span>
+          <span><strong>{{ travel.stats.journey_visited }}</strong> 已去过</span>
+          <span><strong>¥{{ travel.stats.cost_total }}</strong> 总开销</span>
+        </div>
+        <div class="stack">
+          {% for journey in travel.journeys %}
+          <a class="list-row list-row-loose" href="/travel/journeys/{{ journey.id }}">
+            <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
+            <span class="mood-chip" style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
+            <span class="row-title">{{ journey.title }}</span>
+            <span class="row-meta">{{ journey.date_label or '未填写日期' }}</span>
+            <span class="row-meta">¥{{ journey.total_cost }}</span>
+          </a>
+          {% else %}
+          <p class="empty">还没有旅程游记。</p>
+          {% endfor %}
         </div>
         <div class="chip-row">
           {% for place in travel.places %}
-          <span class="chip">{{ '✓' if place.visited else '☆' }} {{ place.name }} <em>{{ place.city }}</em></span>
+          <span class="chip">{{ {'want': '☆', 'visited': '✓'}.get(place.point_status, '☆') }} {{ place.name }} <em>{{ place.city }}</em></span>
           {% else %}
           <p class="empty">还没有地点记录。</p>
           {% endfor %}
         </div>
-        <div class="stack">
-          {% for trip in travel.trips %}
-          <div class="list-row list-row-loose">
-            <span class="tag tag-accent">{{ {'draft': '草稿', 'planned': '已计划', 'done': '已完成'}.get(trip.status, trip.status) }}</span>
-            <span class="row-title">{{ trip.title }}</span>
-            <span class="row-meta">{{ trip.start_date|d if trip.start_date else '待定' }}</span>
-          </div>
-          {% endfor %}
-        </div>
-        <a class="btn btn-ghost" href="/travel">打开地图与行程</a>
+        <a class="btn btn-ghost" href="/travel">打开旅程与地图</a>
       </div>
 
       <div class="tab-body" x-show="tab === 'todo'" x-cloak>

@@ -1,6 +1,8 @@
-{% macro tag_picker(name='tags', initial='', existing=[], colors={}, placeholder='选择已有标签，或输入后回车新建') %}
-<div class="tag-picker" x-data='tagPicker({{ initial|tojson }}, {{ existing|tojson }}, {{ colors|tojson }})'
-     @click.outside="open=false">
+{% macro tag_picker(name='tags', initial='', existing=[], colors={}, placeholder='选择已有标签，或输入后回车新建', multiple=false) %}
+<div class="tag-picker" x-data='tagPicker({{ initial|tojson }}, {{ existing|tojson }}, {{ colors|tojson }}, {{ multiple|tojson }})'
+     @click.outside="open=false"
+     @keydown.escape="open=false"
+     @focusout="if (!$event.relatedTarget || !$el.contains($event.relatedTarget)) open = false">
   <div class="tag-chips">
     <template x-for="tag in tags" :key="tag">
       <span class="tag-chip tag-colored" :style="'--tag-color:' + colorFor(tag)">
@@ -11,7 +13,8 @@
     <span class="muted-sm" x-show="!tags.length">还没有标签</span>
   </div>
   <div class="tag-picker-box" :class="open ? 'is-open' : ''">
-    <input class="input" type="text" x-model="draft" @focus="open=true"
+    <input class="input" type="text" x-model="draft"
+           @focus="open=true" @click="open=true" @input="open=true"
            @keydown.enter.prevent="add()"
            :list="'tag-suggest-{{ name }}'"
            placeholder="{{ placeholder }}">
@@ -19,12 +22,12 @@
       {% for tag in existing %}<option value="{{ tag }}"></option>{% endfor %}
     </datalist>
     <button type="button" class="tag-picker-toggle" aria-label="展开标签"
-            @click="open=!open">▾</button>
+            @mousedown.prevent @click="open=!open">▾</button>
     <div class="tag-suggest-list" x-show="open" x-cloak>
       <template x-for="tag in suggestions" :key="tag">
         <button type="button" class="tag-chip tag-colored tag-suggest"
                 :style="'--tag-color:' + colorFor(tag)"
-                @click="pick(tag)" x-text="tag"></button>
+                @mousedown.prevent @click="pick(tag)" x-text="tag"></button>
       </template>
       <p class="muted-sm" x-show="!suggestions.length">输入名称后回车即可新建标签</p>
     </div>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ journey.title }} · 旅程游记{% endblock %}
+{% block page_title %}旅程游记{% endblock %}
+{% block subtitle %}画廊 · 关联点位 · 开销明细{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2 class="detail-title">
+      <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
+      <span class="mood-chip" style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
+      {{ journey.title }}
+    </h2>
+    <p>{{ journey.date_label or '未填写日期' }}</p>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-ghost" href="/travel?tab=journey">← 返回旅程</a>
+    <button class="btn btn-primary" type="button"
+            data-modal-url="/travel/journeys/{{ journey.id }}/edit"
+            data-modal-title="编辑旅程">编辑旅程</button>
+    <button class="btn btn-ghost danger-text" type="button"
+            hx-post="/travel/journeys/{{ journey.id }}/delete" hx-swap="none"
+            hx-confirm="删除旅程「{{ journey.title }}」？关联点位会保留，图片将一并删除。">删除</button>
+  </div>
+</section>
+
+{% if journey.photo_list %}
+<section class="panel journey-gallery-panel">
+  <div class="journey-gallery">
+    {% for photo in journey.photo_list %}
+    <a href="{{ photo }}" target="_blank" rel="noopener" class="journey-gallery-item">
+      <img src="{{ photo }}" alt="旅程照片 {{ loop.index }}" loading="lazy">
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="detail-layout">
+  <div class="stack">
+    {% if journey.description %}
+    <article class="panel summary-box">
+      <h4>旅程描述</h4>
+      <p class="journey-description">{{ journey.description }}</p>
+    </article>
+    {% endif %}
+
+    <section class="panel">
+      <header class="panel-head">
+        <div>
+          <h2>关联点位</h2>
+          <p class="panel-sub">{{ journey_places|length }} 个地点 · 点击可在地图中定位</p>
+        </div>
+        <button class="btn btn-ghost btn-tiny" type="button"
+                data-modal-url="/travel/journeys/{{ journey.id }}/edit"
+                data-modal-title="编辑旅程">调整点位</button>
+      </header>
+      <div class="journey-place-list">
+        {% for item in journey_places %}
+        <a class="journey-place-item" href="/travel?tab=map&place={{ item.place.id }}">
+          <span class="journey-place-item-head">
+            <i class="status-dot" style="--dot:{{ item.place.marker_color }}"></i>
+            <strong>{{ item.place.name }}</strong>
+            <span class="point-status-badge point-status-{{ item.place.point_status }}">
+              {{ item.place.status_label }}
+            </span>
+            {% if item.place.point_category %}<span class="tag">{{ item.place.point_category }}</span>{% endif %}
+            {% if item.place.rating %}<span class="stars">{{ '★' * item.place.rating }}</span>{% endif %}
+          </span>
+          {% if item.note %}<p class="journey-place-note-text">本次：{{ item.note }}</p>{% endif %}
+          {% if item.place.notes %}
+          <p class="muted-sm clamp-2">{{ item.place.notes }}</p>
+          {% endif %}
+        </a>
+        {% else %}
+        <p class="muted-sm">这趟旅程还没有关联点位，点击「调整点位」添加。</p>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="panel">
+      <h4>开销明细</h4>
+      <dl class="cost-breakdown">
+        <div><dt>路费</dt><dd>¥{{ journey.cost_transport }}</dd></div>
+        <div><dt>住宿费</dt><dd>¥{{ journey.cost_lodging }}</dd></div>
+        <div><dt>伙食费</dt><dd>¥{{ journey.cost_food }}</dd></div>
+        <div><dt>其他</dt><dd>¥{{ journey.cost_other }}</dd></div>
+        <div class="cost-breakdown-total"><dt>合计</dt><dd>¥{{ journey.total_cost }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h4>基本信息</h4>
+      <dl class="detail-grid">
+        <dt>旅程状态</dt>
+        <dd><span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span></dd>
+        <dt>旅途心情</dt>
+        <dd><span class="mood-chip" style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span></dd>
+        <dt>行程日期</dt><dd>{{ journey.date_label or '—' }}</dd>
+        <dt>关联点位</dt><dd>{{ journey_places|length }} 个</dd>
+        <dt>创建时间</dt><dd>{{ journey.created_at|dt }}</dd>
+      </dl>
+    </section>
+  </aside>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  'use strict';
+  document.body.addEventListener('list:refresh', function () {
+    setTimeout(function () { window.location.reload(); }, 150);
+  });
+})();
+</script>
+{% endblock %}

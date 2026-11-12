@@ -1,0 +1,135 @@
+{% set is_edit = journey is not none %}
+<form class="stack-form"
+      hx-post="{{ '/travel/journeys/' ~ journey.id ~ '/edit' if is_edit else '/travel/journeys/new' }}"
+      hx-target="#modal-body" hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      hx-disabled-elt="find button[type='submit']">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <div class="form-section">
+    <h3 class="form-section-title">基础信息</h3>
+    <div class="field-row">
+      <label class="field">
+        <span>旅程标题</span>
+        <input type="text" name="title" maxlength="200" required
+               value="{{ values.title }}" placeholder="例如：京都赏樱 4 日">
+      </label>
+      <label class="field">
+        <span>开始日期</span>
+        <input class="input" type="date" name="start_date" value="{{ values.start_date }}">
+      </label>
+      <label class="field">
+        <span>结束日期</span>
+        <input class="input" type="date" name="end_date" value="{{ values.end_date }}">
+      </label>
+    </div>
+
+    <div class="field">
+      <span>旅程状态</span>
+      <div class="mood-chips">
+        {% for key, label in journey_statuses.items() %}
+        <label class="mood-chip-option"
+               style="--mood:{{ '#FFC8DD' if key == 'want' else '#BDE0FE' }}">
+          <input type="radio" name="status" value="{{ key }}" {{ 'checked' if values.status == key }}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <span>旅途心情</span>
+      <div class="mood-chips">
+        {% for key, label in moods.items() %}
+        <label class="mood-chip-option" style="--mood:{{ mood_colors[key] }}">
+          <input type="radio" name="mood" value="{{ key }}" {{ 'checked' if values.mood == key }}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label class="field">
+      <span>旅程描述</span>
+      <textarea name="description" rows="6"
+                placeholder="这次旅行最难忘的片段…">{{ values.description }}</textarea>
+    </label>
+
+  </div>
+
+  <div class="form-section">
+    <h3 class="form-section-title">开销</h3>
+    <div class="cost-grid"
+         x-data='journeyCosts({{ {"transport": values.cost_transport|int, "lodging": values.cost_lodging|int, "food": values.cost_food|int, "other": values.cost_other|int}|tojson }})'>
+      <label class="field">
+        <span>路费（元）</span>
+        <input type="number" min="0" step="1" name="cost_transport" x-model.number="transport">
+      </label>
+      <label class="field">
+        <span>住宿费（元）</span>
+        <input type="number" min="0" step="1" name="cost_lodging" x-model.number="lodging">
+      </label>
+      <label class="field">
+        <span>伙食费（元）</span>
+        <input type="number" min="0" step="1" name="cost_food" x-model.number="food">
+      </label>
+      <label class="field">
+        <span>其他（元）</span>
+        <input type="number" min="0" step="1" name="cost_other" x-model.number="other">
+      </label>
+      <p class="cost-total">合计 <strong x-text="'¥' + total"></strong></p>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h3 class="form-section-title">关联点位</h3>
+    <div class="journey-places-block" x-data="journeyPlaces()"
+         @click.outside="open=false" @keydown.escape="open=false">
+      <div class="journey-places-picker">
+        <div class="journey-places-bar">
+          <input type="search" class="input" x-model="query"
+                 @focus="open=true" @click="open=true" @input="open=true"
+                 placeholder="点击展开点位列表，可输入名称过滤" autocomplete="off">
+        </div>
+        <div id="journey-place-options" class="journey-place-options" x-show="open" x-cloak>
+          {% for place in places %}
+          {% set checked = place.id in place_notes %}
+          {% set note = place_notes.get(place.id, '') %}
+          {% include "partials/journey_place_row.html" %}
+          {% else %}
+          <p class="muted-sm">还没有点位。先到「点位地图」搜索高德 POI 收藏地点，再回来关联。</p>
+          {% endfor %}
+        </div>
+      </div>
+      <p class="muted-sm" x-show="!open">
+        点击输入框展开点位列表，勾选本次旅程去过的点位，可为每个点位补充本次备注。
+      </p>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h3 class="form-section-title">图库</h3>
+    <div class="image-upload">
+      {% if values.keep_photos %}
+      <div class="image-preview">
+        {% for photo in values.keep_photos %}
+        <label class="image-keep">
+          <img class="image-thumb" src="{{ photo }}" alt="旅程照片" loading="lazy">
+          <input type="checkbox" name="keep_photos" value="{{ photo }}" checked>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="muted-sm">取消勾选可移除已有照片。</p>
+      {% endif %}
+      <input type="file" name="images" accept="image/*" multiple
+             data-image-input="#journey-image-preview">
+      <div id="journey-image-preview" class="image-preview"></div>
+      <p class="muted-sm">最多 12 张，支持 JPG / PNG / WebP，单张不超过 5MB。</p>
+    </div>
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+    <button class="btn btn-primary" type="submit">{{ '保存修改' if is_edit else '保存旅程' }}</button>
+  </div>
+</form>

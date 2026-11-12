@@ -1,7 +1,8 @@
 <section class="stack">
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
   <p class="muted-sm">
-    使用油猴脚本导出的小红书收藏 JSON，无需登录、不抓取 Cookie。导入后会自动抽取博主推荐书单。
+    使用油猴脚本导出的小红书收藏 JSON，无需登录、不抓取 Cookie。导入后会抽取博主推荐书单，
+    并被动识别笔记中的候选地点（需到旅游页人工确认后才入库）。
   </p>
   <form class="stack-form"
         hx-post="/reading/upload"
@@ -24,7 +25,7 @@
       </select>
     </label>
     <div class="modal-actions">
-      <span id="upload-loading" class="loading-line htmx-indicator">正在解析笔记并抽取书单…</span>
+      <span id="upload-loading" class="loading-line htmx-indicator">正在解析笔记、抽取书单与候选地点…</span>
       <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
       <button class="btn btn-primary" type="submit">解析并导入</button>
     </div>

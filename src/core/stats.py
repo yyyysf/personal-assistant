@@ -17,6 +17,7 @@ from src.core.time_utils import (
 )
 from src.models import (
     Book,
+    Journey,
     LearningItem,
     LearningLog,
     LearningTrack,
@@ -26,7 +27,6 @@ from src.models import (
     Place,
     ReadingNote,
     Task,
-    TripPlan,
     WeeklyReview,
 )
 
@@ -187,7 +187,7 @@ def ring_data(db: Session) -> list[dict]:
     books_total = _count(db, Book)
     books_done = _count(db, Book, Book.status == "finished")
     places_total = _count(db, Place)
-    places_visited = _count(db, Place, Place.visited.is_(True))
+    places_visited = _count(db, Place, Place.point_status == "visited")
     learning = learning_summary(db)
 
     def pct(done: int, total: int) -> int:
@@ -374,10 +374,27 @@ def dashboard_context(db: Session) -> dict:
         .order_by(NewsItem.published_at.desc())
         .limit(5)
     ).all()
+    travel_cost = db.scalar(
+        select(
+            func.coalesce(
+                func.sum(
+                    Journey.cost_transport
+                    + Journey.cost_lodging
+                    + Journey.cost_food
+                    + Journey.cost_other
+                ),
+                0,
+            )
+        )
+    )
     travel_stats = {
         "places": _count(db, Place),
-        "visited": _count(db, Place, Place.visited.is_(True)),
-        "trips": _count(db, TripPlan),
+        "want": _count(db, Place, Place.point_status == "want"),
+        "visited": _count(db, Place, Place.point_status == "visited"),
+        "journeys": _count(db, Journey),
+        "journey_want": _count(db, Journey, Journey.status == "want"),
+        "journey_visited": _count(db, Journey, Journey.status == "visited"),
+        "cost_total": int(travel_cost or 0),
     }
     todo_stats = {
         "open": _count(db, Task, Task.archived.is_(False), Task.status != "done"),
@@ -427,7 +444,7 @@ def dashboard_context(db: Session) -> dict:
             "places": db.scalars(
                 select(Place).order_by(Place.visited.desc(), Place.id.desc()).limit(6)
             ).all(),
-            "trips": db.scalars(select(TripPlan).order_by(TripPlan.id.desc()).limit(4)).all(),
+            "journeys": db.scalars(select(Journey).order_by(Journey.id.desc()).limit(4)).all(),
             "stats": travel_stats,
         },
         "todo": {

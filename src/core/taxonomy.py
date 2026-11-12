@@ -3,27 +3,23 @@
 from sqlalchemy import literal, select
 from sqlalchemy.orm import Session
 
-from src.models import Book, Category, Paper, Place, Task, TripPlan
+from src.models import Book, Category, Paper, Place, Task
 
 CATEGORY_MODEL = {
     "book": Book,
     "place": Place,
-    "trip": TripPlan,
 }
 
 TAG_MODEL = {
     "task": Task,
     "book": Book,
     "paper": Paper,
-    "place": Place,
-    "trip": TripPlan,
 }
 
 SCOPE_LABELS = {
     "book": "书籍",
     "paper": "论文",
     "place": "足迹",
-    "trip": "行程",
 }
 
 

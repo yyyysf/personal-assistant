@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.core.logging import get_logger
-from src.llm.assistant import extract_books
-from src.models import Book, ReadingNote
+from src.llm.assistant import extract_books, extract_places
+from src.models import Book, ReadingNote, TravelPlaceCandidate
 
 logger = get_logger(__name__)
 
@@ -110,6 +110,7 @@ def import_notes(db: Session, raw: bytes | str, default_category: str = "") -> d
     notes = parse_export(raw)
     created_notes = 0
     created_books = 0
+    created_places = 0
     book_preview: list[dict[str, str]] = []
 
     existing_titles = {
@@ -148,11 +149,40 @@ def import_notes(db: Session, raw: bytes | str, default_category: str = "") -> d
             created_books += 1
             book_preview.append(parsed_book)
 
+        note_url = note["url"] if note["url"].startswith(("http://", "https://")) else ""
+        for place in extract_places(notes_text):
+            exists = db.scalar(
+                select(TravelPlaceCandidate).where(
+                    TravelPlaceCandidate.note_id == reading_note.id,
+                    TravelPlaceCandidate.name == place["name"],
+                )
+            )
+            if exists is not None:
+                continue
+            db.add(
+                TravelPlaceCandidate(
+                    name=place["name"],
+                    note_id=reading_note.id,
+                    note_title=note["title"],
+                    note_url=note_url,
+                )
+            )
+            created_places += 1
+
     db.commit()
-    logger.info("小红书导入完成：笔记 %s 条，新增书 %s 本", created_notes, created_books)
+    logger.info(
+        "小红书导入完成：笔记 %s 条，新增书 %s 本，候选地点 %s 个",
+        created_notes,
+        created_books,
+        created_places,
+    )
     return {
         "notes_created": created_notes,
         "books_created": created_books,
+        "places_created": created_places,
         "books": book_preview,
-        "message": f"已导入 {created_notes} 条笔记，新增 {created_books} 本书",
+        "message": (
+            f"已导入 {created_notes} 条笔记，新增 {created_books} 本书"
+            + (f"，识别到 {created_places} 个候选地点，可到旅游页确认" if created_places else "")
+        ),
     }

@@ -27,6 +27,11 @@
     }
   }, true);
 
+  document.body.addEventListener('toast', function (event) {
+    var detail = event.detail || {};
+    showToast(detail.message || '', detail.type || '');
+  });
+
   document.body.addEventListener('htmx:responseError', function (event) {
     var message = '请求失败，请稍后重试';
     try {

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from src.core.db import SessionLocal, engine
 from src.core.logging import get_logger
 from src.core.tags import all_task_tags, ensure_tags, normalize_single_tag
-from src.models import Book, Category, LearningItem, Paper, Task
+from src.models import Book, Category, LearningItem, Paper, Place, Task
 from src.models.legacy import LegacyTimeTask
 
 logger = get_logger(__name__)
@@ -51,17 +51,38 @@ COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("rating", "INTEGER DEFAULT 0"),
         ("category", "VARCHAR(60) DEFAULT ''"),
         ("tags", "VARCHAR(200) DEFAULT ''"),
+        ("amap_poi_id", "VARCHAR(64) DEFAULT ''"),
+        ("standard_address", "VARCHAR(255) DEFAULT ''"),
+        ("point_status", "VARCHAR(10) DEFAULT 'want'"),
+        ("point_category", "VARCHAR(20) DEFAULT ''"),
+        ("source_note_url", "VARCHAR(600) DEFAULT ''"),
+        ("sort_order", "INTEGER DEFAULT 0"),
     ],
-    "trip_plans": [
-        ("category", "VARCHAR(60) DEFAULT ''"),
-        ("tags", "VARCHAR(200) DEFAULT ''"),
+    "journeys": [
+        ("status", "VARCHAR(10) DEFAULT 'want'"),
+        ("mood", "VARCHAR(20) DEFAULT 'normal'"),
+        ("description", "TEXT DEFAULT ''"),
+        ("cost_transport", "INTEGER DEFAULT 0"),
+        ("cost_lodging", "INTEGER DEFAULT 0"),
+        ("cost_food", "INTEGER DEFAULT 0"),
+        ("cost_other", "INTEGER DEFAULT 0"),
+        ("photos", "TEXT DEFAULT '[]'"),
+    ],
+    "journey_places": [
+        ("note", "VARCHAR(300) DEFAULT ''"),
     ],
 }
 
 CATEGORY_PRESETS = {
     "book": ["技术", "文学", "历史", "成长"],
-    "place": ["自然景点", "人文古迹", "美食探店", "娱乐"],
-    "trip": ["周末短途", "长途旅行", "城市漫步"],
+    "place": ["景点", "美食", "住宿", "交通", "商场", "娱乐"],
+}
+
+LEGACY_POINT_CATEGORY = {
+    "自然景点": "景点",
+    "人文古迹": "景点",
+    "美食探店": "美食",
+    "娱乐": "娱乐",
 }
 
 
@@ -159,6 +180,13 @@ def _backfill() -> None:
             single = normalize_single_tag(task.tags)
             if single != (task.tags or ""):
                 task.tags = single
+
+        for place in db.scalars(select(Place)).all():
+            if place.point_status not in {"want", "visited"}:
+                place.point_status = "visited" if place.visited else "want"
+            if not place.point_category:
+                place.point_category = LEGACY_POINT_CATEGORY.get(place.category, place.category)
+            place.visited = place.point_status == "visited"
 
         _migrate_time_tasks(db)
         ensure_tags(db, all_task_tags(db))

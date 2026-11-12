@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ place.name }} · 点位详情{% endblock %}
+{% block page_title %}点位详情{% endblock %}
+{% block subtitle %}高德标准地址 · 全局标签 · 状态与备注{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <div class="page-actions-copy">
+    <h2 class="detail-title">
+      <i class="status-dot status-dot-lg" style="--dot:{{ place.marker_color }}"></i>
+      {{ place.name }}
+    </h2>
+    <p>{{ place.standard_address or (place.city ~ ' · ' ~ place.country if place.city and place.country else (place.city or place.country or '地址待补充')) }}</p>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-ghost" href="/travel?tab=map&place={{ place.id }}">← 返回地图</a>
+    <button class="btn btn-ghost" type="button"
+            data-modal-url="/travel/places/{{ place.id }}/add-to-journey"
+            data-modal-title="加入旅程">加入旅程</button>
+    <button class="btn btn-primary" type="button"
+            data-modal-url="/travel/places/{{ place.id }}/edit" data-modal-title="补充信息">补充信息</button>
+  </div>
+</section>
+
+<section class="detail-layout">
+  <div class="panel detail-panel">
+    <div class="inline-chips">
+      <span class="point-status-badge point-status-{{ place.point_status }}">{{ place.status_label }}</span>
+      {% if place.point_category %}<span class="tag">{{ place.point_category }}</span>{% endif %}
+      {% if place.rating %}<span class="stars">{{ '★' * place.rating }}</span>{% endif %}
+    </div>
+
+    <dl class="detail-grid">
+      <dt>高德标准地址</dt>
+      <dd>{{ place.standard_address or '—' }}</dd>
+      <dt>高德 POI ID</dt>
+      <dd>{{ place.amap_poi_id or '—' }}</dd>
+      <dt>GCJ02 坐标</dt>
+      <dd>{{ place.lat|round(6) }}, {{ place.lng|round(6) }}</dd>
+      <dt>城市 / 国家</dt>
+      <dd>{{ place.city or '—' }}{% if place.city and place.country %} · {% endif %}{{ place.country }}</dd>
+      <dt>小红书笔记</dt>
+      <dd>
+        {% if place.source_note_url and place.source_note_url.startswith(('http://', 'https://')) %}
+        <a href="{{ place.source_note_url }}" target="_blank" rel="noopener">打开原笔记 ↗</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt>添加时间</dt>
+      <dd>{{ place.created_at|dt }}</dd>
+    </dl>
+
+    <div class="detail-status-form">
+      <p class="form-section-title">快速调整状态</p>
+      <form class="inline-form" hx-post="/travel/places/{{ place.id }}/status" hx-swap="none">
+        <select class="status-select" name="status">
+          {% for value, label in point_statuses.items() %}
+          <option value="{{ value }}" {{ 'selected' if place.point_status == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-tiny btn-primary" type="submit">更新</button>
+      </form>
+    </div>
+
+    <div class="modal-actions detail-actions">
+      <button class="btn btn-ghost danger-text" type="button"
+              hx-post="/travel/places/{{ place.id }}/delete" hx-swap="none"
+              hx-confirm="删除点位「{{ place.name }}」？关联旅程会保留，相关图片会一并删除。">删除点位</button>
+    </div>
+  </div>
+
+  <div class="stack">
+    {% if place.notes %}
+    <div class="panel summary-box">
+      <h4>备注 / 游记</h4>
+      <p>{{ place.notes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <p class="form-section-title">旅程合影</p>
+      <p class="muted-sm">照片现在随旅程统一管理，可前往对应旅程详情查看画廊。</p>
+      <a class="btn btn-ghost btn-tiny" href="/travel?tab=journey">查看旅程游记</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% include "partials/amap_loader.html" %}
+<script>
+(function () {
+  'use strict';
+  document.body.addEventListener('placeSaved', function () {
+    setTimeout(function () { window.location.reload(); }, 180);
+  });
+  document.body.addEventListener('placeDeleted', function () {
+    setTimeout(function () { window.location.href = '/travel?tab=map'; }, 180);
+  });
+})();
+</script>
+{% endblock %}
