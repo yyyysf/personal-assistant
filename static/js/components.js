@@ -1,29 +1,30 @@
 (function () {
   'use strict';
 
-  function modalEl() {
-    return document.getElementById('app-modal');
-  }
+  var MODAL = { dialog: 'app-modal', title: 'modal-title', body: 'modal-body' };
 
   function openModal(url, title) {
-    var dialog = modalEl();
+    var dialog = document.getElementById(MODAL.dialog);
     if (!dialog) return;
-    var titleEl = document.getElementById('modal-title');
-    var body = document.getElementById('modal-body');
+    var titleEl = document.getElementById(MODAL.title);
+    var body = document.getElementById(MODAL.body);
     if (titleEl) titleEl.textContent = title || '详情';
     if (body) body.innerHTML = '<div class="modal-loading">加载中…</div>';
     if (!dialog.open) dialog.showModal();
     if (url && window.htmx) {
-      window.htmx.ajax('GET', url, { target: '#modal-body', swap: 'innerHTML' });
+      window.htmx.ajax('GET', url, { target: '#' + MODAL.body, swap: 'innerHTML' });
     }
   }
 
   function closeModal() {
-    var dialog = modalEl();
+    var dialog = document.getElementById(MODAL.dialog);
     if (dialog && dialog.open) dialog.close();
   }
 
-  window.AppModal = { open: openModal, close: closeModal };
+  window.AppModal = {
+    open: function (url, title) { openModal(url, title); },
+    close: function () { closeModal(); }
+  };
 
   document.addEventListener('click', function (event) {
     var trigger = event.target.closest('[data-modal-url]');
@@ -38,22 +39,28 @@
       openModal(card.dataset.detailUrl, card.dataset.detailTitle || '详情');
       return;
     }
+    var nav = event.target.closest('[data-nav-url]');
+    if (nav && !event.target.closest('a, button, form, input, select, textarea, label')) {
+      event.preventDefault();
+      window.location.href = nav.dataset.navUrl;
+      return;
+    }
     if (event.target.closest('[data-modal-close]')) closeModal();
   });
 
   document.addEventListener('DOMContentLoaded', function () {
-    var dialog = modalEl();
+    var dialog = document.getElementById(MODAL.dialog);
     if (!dialog) return;
     dialog.addEventListener('click', function (event) {
       if (event.target === dialog) closeModal();
     });
     dialog.addEventListener('close', function () {
-      var body = document.getElementById('modal-body');
+      var body = document.getElementById(MODAL.body);
       if (body) body.innerHTML = '';
     });
   });
 
-  document.body.addEventListener('modal:close', closeModal);
+  document.body.addEventListener('modal:close', function () { closeModal(); });
 
   document.body.addEventListener('list:refresh', function () {
     var el = document.querySelector('[data-refresh-url]');
@@ -62,31 +69,58 @@
     }
   });
 
+  function syncInputFiles(input, files) {
+    var transfer = new DataTransfer();
+    files.forEach(function (file) { transfer.items.add(file); });
+    input.files = transfer.files;
+    input._previewFiles = files;
+  }
+
+  function renderImagePreview(input, preview, files) {
+    preview.innerHTML = '';
+    files.forEach(function (file, index) {
+      if (!file.type || file.type.indexOf('image/') !== 0) return;
+      var wrap = document.createElement('span');
+      wrap.className = 'image-preview-item';
+      var img = document.createElement('img');
+      img.className = 'image-thumb';
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'image-preview-remove';
+      remove.setAttribute('aria-label', '移除图片');
+      remove.textContent = '×';
+      remove.addEventListener('click', function () {
+        var next = files.slice();
+        next.splice(index, 1);
+        syncInputFiles(input, next);
+        renderImagePreview(input, preview, next);
+      });
+      var reader = new FileReader();
+      reader.onload = function () { img.src = reader.result; };
+      reader.readAsDataURL(file);
+      wrap.appendChild(img);
+      wrap.appendChild(remove);
+      preview.appendChild(wrap);
+    });
+  }
+
   document.addEventListener('change', function (event) {
     var input = event.target.closest('[data-image-input]');
     if (!input) return;
     var preview = document.querySelector(input.dataset.imageInput);
     if (!preview) return;
-    preview.innerHTML = '';
-    Array.prototype.slice.call(input.files || []).forEach(function (file) {
-      if (!file.type || file.type.indexOf('image/') !== 0) return;
-      var reader = new FileReader();
-      reader.onload = function () {
-        var img = document.createElement('img');
-        img.className = 'image-thumb';
-        img.src = reader.result;
-        preview.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    });
+    var files = Array.prototype.slice.call(input.files || []);
+    input._previewFiles = files;
+    renderImagePreview(input, preview, files);
   });
 
   document.addEventListener('alpine:init', function () {
-    Alpine.data('tagPicker', function (initial, existing, colors) {
+    Alpine.data('tagPicker', function (initial, existing, colors, multiple) {
       return {
         tags: (initial || '').split(',').map(function (tag) { return tag.trim(); }).filter(Boolean),
         draft: '',
         open: false,
+        multiple: !!multiple,
         existing: existing || [],
         colors: colors || {},
         colorFor: function (tag) {
@@ -102,17 +136,25 @@
         },
         add: function () {
           var tag = this.draft.trim();
-          if (tag) this.tags = [tag];
+          if (tag && this.multiple) {
+            if (this.tags.indexOf(tag) === -1) this.tags.push(tag);
+          } else if (tag) {
+            this.tags = [tag];
+          }
           this.draft = '';
-          this.open = false;
+          if (!this.multiple) this.open = false;
         },
         remove: function (tag) {
           this.tags = this.tags.filter(function (item) { return item !== tag; });
         },
         pick: function (tag) {
-          this.tags = [tag];
+          if (this.multiple) {
+            if (this.tags.indexOf(tag) === -1) this.tags.push(tag);
+          } else {
+            this.tags = [tag];
+          }
           this.draft = '';
-          this.open = false;
+          if (!this.multiple) this.open = false;
         }
       };
     });
@@ -251,6 +293,30 @@
         remove: function (index) {
           this.urls.splice(index, 1);
           if (!this.urls.length) this.urls.push('');
+        }
+      };
+    });
+
+    Alpine.data('journeyCosts', function (initial) {
+      var costs = initial || {};
+      return {
+        transport: Number(costs.transport) || 0,
+        lodging: Number(costs.lodging) || 0,
+        food: Number(costs.food) || 0,
+        other: Number(costs.other) || 0,
+        get total() {
+          return this.transport + this.lodging + this.food + this.other;
+        }
+      };
+    });
+
+    Alpine.data('journeyPlaces', function () {
+      return {
+        open: false,
+        query: '',
+        matches: function (name) {
+          var query = this.query.trim().toLowerCase();
+          return !query || (name || '').toLowerCase().indexOf(query) !== -1;
         }
       };
     });

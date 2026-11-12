@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     zotero_library_type: str = "user"
     zotero_local_api_url: str = "http://127.0.0.1:23119/api"
 
+    # 高德 Web JS API：key 只从 .env 读取，禁止硬编码或提交
+    amap_web_key: str = ""
+    amap_security_js_code: str = ""
+
     enable_scheduler: bool = True
     arxiv_fetch_hour: int = 8
     arxiv_fetch_minute: int = 5
@@ -60,6 +64,10 @@ class Settings(BaseSettings):
     @property
     def zotero_configured(self) -> bool:
         return bool(self.zotero_api_key.strip() and self.zotero_user_id.strip())
+
+    @property
+    def amap_configured(self) -> bool:
+        return bool(self.amap_web_key.strip())
 
     @property
     def rss_feed_list(self) -> list[str]:

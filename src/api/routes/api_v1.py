@@ -24,7 +24,6 @@ from src.api.schemas import (
     PlaceUpdate,
     TaskCreate,
     TaskUpdate,
-    TripCreate,
 )
 from src.api.serializers import (
     book_to_dict,
@@ -40,11 +39,10 @@ from src.api.serializers import (
     review_to_dict,
     task_to_dict,
     track_to_dict,
-    trip_to_dict,
 )
 from src.core.config import settings
 from src.core.stats import dashboard_context, ring_data, week_completion
-from src.core.tags import ensure_tags, normalize_single_tag
+from src.core.tags import ensure_tags, normalize_single_tag, normalize_tag_string
 from src.core.taxonomy import CATEGORY_MODEL, all_tags, clear_category, rename_category
 from src.core.time_utils import today
 from src.core.xhs import XhsParseError, import_notes
@@ -64,7 +62,6 @@ from src.models import (
     Place,
     ReadingNote,
     Task,
-    TripPlan,
 )
 from src.scheduler.fetchers import build_daily_digest, fetch_arxiv, fetch_rss, refresh_news_summary
 from src.scheduler.review import generate_and_store_review
@@ -640,7 +637,12 @@ def list_places(db: Session = Depends(get_db)) -> dict:
 
 @router.post("/places")
 def create_place(payload: PlaceCreate, db: Session = Depends(get_db)) -> dict:
-    place = Place(**payload.model_dump())
+    data = payload.model_dump()
+    if data.pop("visited", False):
+        data["point_status"] = "visited"
+    data["visited"] = data["point_status"] == "visited"
+    data["category"] = data["point_category"]
+    place = Place(**data)
     db.add(place)
     db.commit()
     db.refresh(place)
@@ -652,7 +654,24 @@ def update_place(place_id: int, payload: PlaceUpdate, db: Session = Depends(get_
     place = db.get(Place, place_id)
     if place is None:
         raise HTTPException(status_code=404, detail="地点不存在")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "point_status" in data:
+        data["point_status"] = _validate_status(
+            data["point_status"], {"want", "visited"}, "point_status"
+        )
+        data["visited"] = data["point_status"] == "visited"
+    elif "visited" in data:
+        data["point_status"] = "visited" if data["visited"] else "want"
+    if "point_category" in data:
+        data["point_category"] = _validate_status(
+            data["point_category"],
+            {"", "景点", "美食", "住宿", "交通", "商场", "娱乐"},
+            "point_category",
+        )
+        data["category"] = data["point_category"]
+    if data.get("tags") is not None:
+        data["tags"] = normalize_tag_string(data["tags"])
+    for field, value in data.items():
         setattr(place, field, value)
     db.commit()
     db.refresh(place)
@@ -667,31 +686,6 @@ def delete_place(place_id: int, db: Session = Depends(get_db)) -> dict:
     db.delete(place)
     db.commit()
     return ok(message="地点已删除")
-
-
-@router.get("/trips")
-def list_trips(db: Session = Depends(get_db)) -> dict:
-    trips = db.scalars(select(TripPlan).order_by(TripPlan.id.desc())).all()
-    return ok([trip_to_dict(trip) for trip in trips])
-
-
-@router.post("/trips")
-def create_trip(payload: TripCreate, db: Session = Depends(get_db)) -> dict:
-    trip = TripPlan(**payload.model_dump())
-    db.add(trip)
-    db.commit()
-    db.refresh(trip)
-    return ok(trip_to_dict(trip), "行程已保存")
-
-
-@router.delete("/trips/{trip_id}")
-def delete_trip(trip_id: int, db: Session = Depends(get_db)) -> dict:
-    trip = db.get(TripPlan, trip_id)
-    if trip is None:
-        raise HTTPException(status_code=404, detail="行程不存在")
-    db.delete(trip)
-    db.commit()
-    return ok(message="行程已删除")
 
 
 @router.get("/mcp/status")

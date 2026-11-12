@@ -291,6 +291,38 @@ def extract_books(notes_text: str) -> list[dict[str, str]]:
     )
 
 
+def extract_places(notes_text: str) -> list[dict[str, str]]:
+    """从小红书笔记中被动识别候选地点；LLM 不可用时返回空列表，不误报。"""
+    if not is_available():
+        return []
+    try:
+        text = chat(
+            prompts.PLACE_EXTRACTION.format(notes=notes_text[:6000]),
+            system=prompts.SYSTEM_ASSISTANT,
+            temperature=0.2,
+        )
+        data = _extract_json(text)
+        if not isinstance(data, list):
+            return []
+        places: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name", "")).strip()[:200]
+            key = name.casefold()
+            if not name or key in seen:
+                continue
+            seen.add(key)
+            places.append({"name": name, "city": str(item.get("city", "")).strip()[:100]})
+            if len(places) >= 8:
+                break
+        return places
+    except (LLMNotConfigured, LLMError, ValueError, TypeError) as exc:
+        logger.info("地点识别降级：%s", exc)
+        return []
+
+
 def _dedupe_books(books: list[dict[str, str]]) -> list[dict[str, str]]:
     seen: set[str] = set()
     result: list[dict[str, str]] = []

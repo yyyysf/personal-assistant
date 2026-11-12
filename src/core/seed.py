@@ -18,7 +18,6 @@ from src.models import (
     Paper,
     Place,
     Task,
-    TripPlan,
 )
 
 logger = get_logger(__name__)
@@ -324,6 +323,8 @@ def seed_demo_data(db: Session) -> None:
                 lat=39.9163,
                 lng=116.3972,
                 visited=True,
+                point_status="visited",
+                point_category="景点",
                 visit_date=date(2024, 5, 2),
                 notes="清晨入馆人少，光影很好。",
             ),
@@ -334,6 +335,8 @@ def seed_demo_data(db: Session) -> None:
                 lat=31.2400,
                 lng=121.4906,
                 visited=True,
+                point_status="visited",
+                point_category="景点",
                 visit_date=date(2023, 10, 1),
             ),
             Place(
@@ -343,6 +346,8 @@ def seed_demo_data(db: Session) -> None:
                 lat=34.9949,
                 lng=135.7850,
                 visited=True,
+                point_status="visited",
+                point_category="景点",
                 visit_date=date(2024, 4, 5),
                 notes="樱花季，建议早上 7 点前往。",
             ),
@@ -353,25 +358,11 @@ def seed_demo_data(db: Session) -> None:
                 lat=48.8584,
                 lng=2.2945,
                 visited=False,
+                point_status="want",
+                point_category="景点",
                 notes="计划 2027 年春季前往。",
             ),
         ]
     )
-    db.add(
-        TripPlan(
-            title="京都赏樱 4 日行程草稿",
-            start_date=date(2027, 3, 28),
-            end_date=date(2027, 3, 31),
-            status="draft",
-            itinerary=(
-                "D1 抵达京都 · 鸭川散步\n"
-                "D2 清水寺 → 二年坂 → 祇园\n"
-                "D3 岚山竹林 → 天龙寺\n"
-                "D4 伏见稻荷 → 返程"
-            ),
-            notes="提前一个月订酒店，带轻便长焦。",
-        )
-    )
-
     db.commit()
     logger.info("演示数据写入完成")

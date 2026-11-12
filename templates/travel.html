@@ -1,91 +1,152 @@
 {% extends "base.html" %}
 {% block title %}旅游规划 · Private Assistant{% endblock %}
 {% block page_title %}旅游规划{% endblock %}
-{% block subtitle %}交互式地图 · 足迹打点 · 行程草稿 · 旅行档案{% endblock %}
-
-{% block styles %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-{% endblock %}
+{% block subtitle %}{% endblock %}
 
 {% block content %}
-<section class="page-actions">
-  <div class="page-actions-copy">
-    <h2>把去过的地方与想去的地方，钉在地图上</h2>
-    <p>点击地图空白处可直接新增足迹，点击标记查看详情；照片、游记与行程草稿都保存在本地。</p>
+<div class="travel-summary-row">
+  <div class="inline-stats stat-strip travel-stat-strip">
+    <span class="stat-dot-label"><i class="status-dot" style="--dot:#FFC8DD"></i><strong>{{ stats.journey_want }}</strong> 旅程想去</span>
+    <span class="stat-dot-label"><i class="status-dot" style="--dot:#BDE0FE"></i><strong>{{ stats.journey_visited }}</strong> 旅程已去过</span>
+    <span class="stat-dot-label"><i class="status-dot" style="--dot:#FFC8DD"></i><strong>{{ stats.want }}</strong> 点位想去</span>
+    <span class="stat-dot-label"><i class="status-dot" style="--dot:#BDE0FE"></i><strong>{{ stats.visited }}</strong> 点位已去</span>
+    <span><strong>{{ stats.journeys }}</strong> 趟旅程</span>
+    <span><strong>¥{{ stats.cost_total }}</strong> 旅行开销</span>
   </div>
   <div class="action-row">
-    <button class="btn btn-ghost" type="button"
-            data-modal-url="/travel/trips/new" data-modal-title="新增行程">+ 新增行程</button>
     <button class="btn btn-primary" type="button"
-            data-modal-url="/travel/places/new" data-modal-title="新增足迹">+ 新增足迹</button>
+            data-modal-url="/travel/journeys/new" data-modal-title="新增旅程">+ 新增旅程</button>
   </div>
-</section>
-
-<div class="inline-stats stat-strip">
-  <span><strong>{{ stats.total_places }}</strong> 个足迹</span>
-  <span><strong>{{ stats.visited }}</strong> 已到访</span>
-  <span><strong>{{ stats.trips }}</strong> 份行程</span>
 </div>
 
-<div class="view-tabs">
-  <a href="/travel?tab=visited" class="{{ 'is-active' if tab != 'draft' }}">足迹记录 · {{ stats.total_places }}</a>
-  <a href="/travel?tab=draft" class="{{ 'is-active' if tab == 'draft' }}">行程草稿 · {{ stats.trips }}</a>
-</div>
-
-{% set current_categories = trip_categories if tab == 'draft' else categories %}
-{% set current_tags = trip_tag_options if tab == 'draft' else tag_options %}
-<form class="filter-bar" hx-get="/travel/content" hx-target="#travel-content"
-      hx-swap="outerHTML" hx-trigger="change, submit">
-  <input type="hidden" name="tab" value="{{ tab }}">
-  <label class="field">
-    <span>分类</span>
-    <select name="category">
-      <option value="">全部分类</option>
-      {% for name in current_categories %}
-      <option value="{{ name }}" {{ 'selected' if filters.category == name }}>{{ name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="field">
-    <span>标签</span>
-    <select name="tag">
-      <option value="">全部标签</option>
-      {% for name in current_tags %}
-      <option value="{{ name }}" {{ 'selected' if filters.tag == name }}>{{ name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="field filter-search">
-    <span>关键词</span>
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="搜索地点、城市、游记或行程">
-  </label>
-  <div class="filter-actions">
+<div class="travel-toolbar{{ ' is-journey' if tab == 'journey' }}">
+  <div class="view-tabs">
+    <a href="/travel?tab=journey" class="{{ 'is-active' if tab == 'journey' }}">旅程游记 · {{ stats.journeys }}</a>
+    <a href="/travel?tab=map" class="{{ 'is-active' if tab == 'map' }}">点位地图 · {{ stats.total_places }}</a>
+  </div>
+  {% if tab == 'map' %}
+  <form class="travel-search-bar" hx-get="/travel/content" hx-target="#travel-content"
+        hx-swap="outerHTML" hx-trigger="change, submit">
+    <input type="hidden" name="tab" value="map">
+    <input type="search" name="q" value="{{ filters.q }}"
+           placeholder="搜索点位、地址或城市" aria-label="关键词">
     <button class="btn btn-primary" type="submit">筛选</button>
-    <a class="btn btn-ghost" href="/travel?tab={{ tab }}">重置</a>
-    <button class="btn btn-ghost" type="button"
-            data-modal-url="/categories/{{ 'trip' if tab == 'draft' else 'place' }}/manage"
-            data-modal-title="{{ '行程分类管理' if tab == 'draft' else '足迹分类管理' }}">分类管理</button>
+    <a class="btn btn-ghost" href="/travel?tab=map">重置</a>
+  </form>
+  {% else %}
+  <div class="journey-status-filters">
+    <a href="/travel?tab=journey" class="{{ 'is-active' if not journey_status }}">全部</a>
+    {% for value, label in journey_statuses.items() %}
+    <a href="/travel?tab=journey&journey_status={{ value }}"
+       class="{{ 'is-active' if journey_status == value }}">{{ label }}</a>
+    {% endfor %}
   </div>
-</form>
+  {% endif %}
+</div>
 
+{% if tab == 'journey' %}
+{% include "partials/journey_list.html" %}
+{% else %}
 <section class="panel map-panel">
-  <div class="map-shell">
-    <div id="travel-map" class="travel-map" aria-label="旅行地图"></div>
-    <div id="map-fallback" class="map-fallback" hidden></div>
+  <div class="map-split">
+    <div class="map-main">
+      {% if amap_configured %}
+      <div class="map-search-row">
+        <input id="poi-search" class="map-search-input" type="search" autocomplete="off"
+               placeholder="搜索地名、餐厅、酒店、商场…选中即收藏点位">
+        <span class="map-search-hint">高德 POI · 选中直接入库</span>
+      </div>
+      {% else %}
+      <div class="alert alert-info">
+        尚未配置 AMAP_WEB_KEY。请在 .env 中填写高德 Web端(JS API) Key 并配置域名白名单，
+        地图与 POI 检索才会启用；右侧列表仍可正常使用。
+      </div>
+      {% endif %}
+
+      <div class="map-filter" id="map-filter" aria-label="地图筛选">
+        <span class="map-filter-label">状态</span>
+        {% for value, label in point_statuses.items() %}
+        <label class="chip-check">
+          <input type="checkbox" data-filter-status="{{ value }}" checked>
+          <i class="status-dot" style="--dot:{{ status_colors[value] }}"></i>{{ label }}
+        </label>
+        {% endfor %}
+        <span class="map-filter-divider"></span>
+        <span class="map-filter-label">类型</span>
+        {% for name in point_categories %}
+        <label class="chip-check">
+          <input type="checkbox" data-filter-category="{{ name }}" checked>
+          <i class="status-dot" style="--dot:{{ category_colors[name] }}"></i>{{ name }}
+        </label>
+        {% endfor %}
+        <button class="btn btn-tiny btn-ghost map-filter-reset" type="button" id="map-filter-reset">重置</button>
+        <span class="map-filter-count" id="map-visible-count"></span>
+      </div>
+
+      <div class="map-shell">
+        <div id="travel-map" class="travel-map" aria-label="高德旅游地图"></div>
+        <div id="map-fallback" class="map-fallback" hidden></div>
+        <button type="button" class="map-side-open" id="place-side-open" hidden>‹ 展开点位列表</button>
+      </div>
+      <p class="map-hint">
+        圆点颜色代表分类：景点绿 · 美食橙 · 住宿紫 · 交通蓝 · 商场黄 · 娱乐粉 · 灰色为未分类。
+        搜索地名选中即收藏点位，点击标记查看信息。
+      </p>
+    </div>
+
+    {% include "partials/travel_content.html" %}
   </div>
-  <p class="map-hint">点击地图空白处新增足迹 · 圆点颜色代表分类，圆点越大评分越高 · 地图瓦片来自 OpenStreetMap</p>
 </section>
+
+{% if candidates %}
+<section class="panel candidate-panel" id="candidate-panel">
+  <header class="panel-head">
+    <div>
+      <h2>小红书候选地点</h2>
+      <p class="panel-sub">{{ candidates|length }} 个待确认 · 被动识别，不会自动入库</p>
+    </div>
+    {% if amap_configured %}
+    <button class="btn btn-primary btn-tiny" type="button" id="candidate-import">匹配高德并新增</button>
+    {% endif %}
+  </header>
+  <div class="candidate-list">
+    {% for candidate in candidates %}
+    <label class="candidate-item">
+      <input type="checkbox" class="candidate-check" value="{{ candidate.id }}"
+             data-name="{{ candidate.name }}">
+      <span class="candidate-name">{{ candidate.name }}</span>
+      {% if candidate.note_title %}<span class="muted-sm">来自「{{ candidate.note_title }}」</span>{% endif %}
+      {% if candidate.note_url and candidate.note_url.startswith(('http://', 'https://')) %}
+      <a href="{{ candidate.note_url }}" target="_blank" rel="noopener" class="candidate-link">原笔记 ↗</a>
+      {% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  <div class="candidate-actions">
+    <button class="btn btn-ghost btn-tiny" type="button" id="candidate-ignore">忽略选中</button>
+    <span class="muted-sm" id="candidate-status">
+      {% if not amap_configured %}配置 AMAP_WEB_KEY 后才能自动匹配坐标{% endif %}
+    </span>
+  </div>
+</section>
+{% endif %}
 
 <script type="application/json" id="places-data">{{ markers|tojson }}</script>
-
-{% include "partials/travel_content.html" %}
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% include "partials/amap_loader.html" %}
+{% if tab == 'map' %}
 <script>
 (function () {
   'use strict';
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
 
   function showFallback(message) {
     var fallback = document.getElementById('map-fallback');
@@ -97,76 +158,512 @@
     if (mapEl) mapEl.classList.add('is-unavailable');
   }
 
-  function escapeHtml(value) {
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+  function readPlaces() {
+    var dataEl = document.getElementById('places-data');
+    try { return JSON.parse(dataEl ? dataEl.textContent : '[]'); } catch (err) { return []; }
+  }
+
+  function applyFilters() {
+    var statuses = {};
+    document.querySelectorAll('[data-filter-status]').forEach(function (input) {
+      statuses[input.dataset.filterStatus] = input.checked;
+    });
+    var categories = {};
+    document.querySelectorAll('[data-filter-category]').forEach(function (input) {
+      categories[input.dataset.filterCategory] = input.checked;
+    });
+    var ratingEl = document.querySelector('[data-list-rating-filter]');
+    var minRating = Number(ratingEl ? ratingEl.value : 0) || 0;
+    var cityEl = document.querySelector('[data-list-city-filter]');
+    var cityValue = cityEl ? cityEl.value : '';
+    var listStatusEl = document.querySelector('[data-list-status-filter]');
+    var listStatus = listStatusEl ? listStatusEl.value : '';
+
+    var visible = 0;
+    document.querySelectorAll('#travel-content .place-sort-item').forEach(function (item) {
+      var okStatus = statuses[item.dataset.status] !== false;
+      var okCategory = !item.dataset.category || categories[item.dataset.category] !== false;
+      var okRating = Number(item.dataset.rating || 0) >= minRating;
+      var okCity = !cityValue || (item.dataset.city || '') === cityValue;
+      var okListStatus = !listStatus || (item.dataset.status || '') === listStatus;
+      var show = okStatus && okCategory && okRating && okCity && okListStatus;
+      item.classList.toggle('is-hidden', !show);
+      if (show) visible += 1;
+    });
+    document.querySelectorAll('#travel-content .place-group').forEach(function (group) {
+      var anyVisible = group.querySelector('.place-sort-item:not(.is-hidden)');
+      group.classList.toggle('is-hidden', !anyVisible);
+    });
+
+    if (window.__travelMap) {
+      window.__travelMap.markers.forEach(function (entry) {
+        var place = entry.place;
+        var okStatus = statuses[place.point_status] !== false;
+        var okCategory = !place.point_category || categories[place.point_category] !== false;
+        if (okStatus && okCategory) entry.marker.show();
+        else entry.marker.hide();
+      });
+    }
+
+    var countEl = document.getElementById('map-visible-count');
+    if (countEl) countEl.textContent = '当前显示 ' + visible + ' 个点位';
+  }
+
+  window.__travelApplyFilters = applyFilters;
+
+  document.addEventListener('change', function (event) {
+    if (event.target.matches('[data-filter-status], [data-filter-category]')) applyFilters();
+  });
+
+  document.getElementById('map-filter-reset')?.addEventListener('click', function () {
+    document.querySelectorAll('[data-filter-status], [data-filter-category]').forEach(function (input) {
+      input.checked = true;
+    });
+    applyFilters();
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function () {
+    if (document.getElementById('travel-content')) {
+      restoreGroupState();
+      restoreListView();
+      applyFilters();
+    }
+  });
+
+  /* ---------- 点位拖动排序 ---------- */
+  var dragItem = null;
+  var suppressNavUntil = 0;
+
+  function dragAfterElement(list, y) {
+    var items = Array.prototype.slice.call(
+      list.querySelectorAll('.place-sort-item:not(.is-dragging)')
+    );
+    return items.reduce(function (closest, child) {
+      var box = child.getBoundingClientRect();
+      var offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+      return closest;
+    }, { offset: -Infinity, element: null }).element;
+  }
+
+  function persistPlaceOrder() {
+    reindexManualOrder();
+    var ids = Array.prototype.slice.call(
+      document.querySelectorAll('#travel-content .place-sort-item')
+    ).map(function (item) { return Number(item.dataset.placeId); });
+    fetch('/travel/places/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    }).then(function (response) {
+      if (!response.ok) throw new Error('排序保存失败');
+    }).catch(function () {
+      toast('排序保存失败，请稍后重试', 'error');
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    var mapEl = document.getElementById('travel-map');
-    if (!mapEl) return;
-    if (!window.L) {
-      showFallback('地图组件加载失败，仍可在下方列表查看与编辑足迹。');
+  document.addEventListener('click', function (event) {
+    if (Date.now() < suppressNavUntil) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
+  document.addEventListener('dragstart', function (event) {
+    var item = event.target.closest('.place-sort-item');
+    if (!item || item.draggable === false) return;
+    dragItem = item;
+    item.classList.add('is-dragging');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      try { event.dataTransfer.setData('text/plain', item.dataset.placeId || ''); } catch (err) {}
+    }
+  });
+
+  document.addEventListener('dragover', function (event) {
+    if (!dragItem) return;
+    var list = event.target.closest('.place-sort-list');
+    if (!list || list !== dragItem.closest('.place-sort-list')) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    var after = dragAfterElement(list, event.clientY);
+    if (after == null) list.appendChild(dragItem);
+    else list.insertBefore(dragItem, after);
+  });
+
+  document.addEventListener('drop', function (event) {
+    if (!dragItem) return;
+    var list = event.target.closest('.place-sort-list');
+    if (list && list === dragItem.closest('.place-sort-list')) {
+      event.preventDefault();
+      persistPlaceOrder();
+    }
+  });
+
+  document.addEventListener('dragend', function () {
+    if (!dragItem) return;
+    dragItem.classList.remove('is-dragging');
+    dragItem = null;
+    suppressNavUntil = Date.now() + 300;
+  });
+
+  /* ---------- 列表内快速改状态 / 打分 ---------- */
+  function updateSideRow(place) {
+    var row = document.querySelector('.place-sort-item[data-place-id="' + place.id + '"]');
+    if (!row) return;
+    if (place.point_status) {
+      row.dataset.status = place.point_status;
+      row.classList.toggle('is-visited', place.point_status === 'visited');
+      var badge = row.querySelector('.place-visited');
+      if (badge) {
+        badge.textContent = place.point_status === 'visited' ? '已去' : '未去';
+        badge.classList.toggle('is-visited', place.point_status === 'visited');
+      }
+    }
+    if (typeof place.rating === 'number') {
+      row.dataset.rating = String(place.rating);
+      row.querySelectorAll('[data-rate]').forEach(function (star) {
+        star.classList.toggle('is-on', Number(star.dataset.rate) <= place.rating);
+      });
+    }
+    applyListSort();
+    applyFilters();
+  }
+
+  document.body.addEventListener('placeSaved', function (event) {
+    if (event.detail) updateSideRow(event.detail);
+  });
+
+  document.addEventListener('click', function (event) {
+    var toggle = event.target.closest('[data-status-toggle]');
+    if (toggle) {
+      event.preventDefault();
+      var row = toggle.closest('.place-sort-item');
+      if (!row || !window.htmx) return;
+      var next = row.dataset.status === 'visited' ? 'want' : 'visited';
+      window.htmx.ajax('POST', toggle.dataset.toggleUrl, {
+        values: { status: next, from_list: '1' },
+        swap: 'none'
+      });
       return;
     }
-
-    var dataEl = document.getElementById('places-data');
-    var places = [];
-    try { places = JSON.parse(dataEl ? dataEl.textContent : '[]'); } catch (e) { places = []; }
-
-    var map;
-    try {
-      map = L.map('travel-map', { scrollWheelZoom: true }).setView([30, 110], 3);
-      var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
+    var star = event.target.closest('[data-rate]');
+    if (star) {
+      event.preventDefault();
+      var ratingRow = star.closest('.place-sort-item');
+      if (!ratingRow || !window.htmx) return;
+      var value = Number(star.dataset.rate);
+      var nextRating = Number(ratingRow.dataset.rating) === value ? 0 : value;
+      var stars = ratingRow.querySelector('.place-stars');
+      window.htmx.ajax('POST', stars.dataset.rateUrl, {
+        values: { rating: String(nextRating) },
+        swap: 'none'
       });
-      tiles.on('tileerror', function () {
-        showFallback('地图瓦片加载失败，仍可在下方列表查看与编辑足迹。');
-      });
-      tiles.addTo(map);
-    } catch (error) {
-      showFallback('地图初始化失败，仍可在下方列表查看与编辑足迹。');
-      return;
     }
+  });
 
-    var colors = {
-      '自然景点': '#34c759',
-      '人文古迹': '#ff9f0a',
-      '美食探店': '#ff375f',
-      '娱乐': '#af52de'
+  /* ---------- 列表筛选 / 排序 ---------- */
+  var LIST_VIEW_KEY = 'travel:list-view';
+
+  function manualOrder(item) {
+    return Number(item.dataset.manualOrder || 0);
+  }
+
+  function applyListSort() {
+    var sortEl = document.querySelector('[data-list-sort]');
+    var mode = sortEl ? sortEl.value : 'manual';
+    document.querySelectorAll('#travel-content .place-sort-list').forEach(function (list) {
+      var items = Array.prototype.slice.call(list.querySelectorAll('.place-sort-item'));
+      items.sort(function (a, b) {
+        if (mode === 'rating') {
+          var byRating = Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0);
+          return byRating || manualOrder(a) - manualOrder(b);
+        }
+        if (mode === 'city') {
+          var byCity = (a.dataset.city || '').localeCompare(
+            b.dataset.city || '', 'zh-Hans-CN'
+          );
+          return byCity || Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0);
+        }
+        return manualOrder(a) - manualOrder(b);
+      });
+      items.forEach(function (item) { list.appendChild(item); });
+    });
+    document.querySelectorAll('#travel-content .place-sort-item').forEach(function (item) {
+      item.draggable = mode === 'manual';
+      item.classList.toggle('is-sort-locked', mode !== 'manual');
+    });
+  }
+
+  function saveListView() {
+    var statusEl = document.querySelector('[data-list-status-filter]');
+    var ratingEl = document.querySelector('[data-list-rating-filter]');
+    var cityEl = document.querySelector('[data-list-city-filter]');
+    var sortEl = document.querySelector('[data-list-sort]');
+    var state = {
+      status: statusEl ? statusEl.value : '',
+      rating: ratingEl ? ratingEl.value : '0',
+      city: cityEl ? cityEl.value : '',
+      sort: sortEl ? sortEl.value : 'manual'
     };
+    try {
+      window.localStorage.setItem(LIST_VIEW_KEY, JSON.stringify(state));
+    } catch (err) {}
+  }
+
+  function restoreListView() {
+    var state = {};
+    try {
+      state = JSON.parse(window.localStorage.getItem(LIST_VIEW_KEY) || '{}') || {};
+    } catch (err) {}
+    var statusEl = document.querySelector('[data-list-status-filter]');
+    if (statusEl && typeof state.status === 'string') {
+      statusEl.value = state.status;
+      if (statusEl.value !== state.status) statusEl.value = '';
+    }
+    var ratingEl = document.querySelector('[data-list-rating-filter]');
+    if (ratingEl && state.rating != null) ratingEl.value = String(state.rating);
+    var cityEl = document.querySelector('[data-list-city-filter]');
+    if (cityEl && typeof state.city === 'string') {
+      cityEl.value = state.city;
+      if (cityEl.value !== state.city) cityEl.value = '';
+    }
+    var sortEl = document.querySelector('[data-list-sort]');
+    if (sortEl && typeof state.sort === 'string') {
+      sortEl.value = state.sort;
+      if (sortEl.value !== state.sort) sortEl.value = 'manual';
+    }
+    applyListSort();
+  }
+
+  function reindexManualOrder() {
+    document.querySelectorAll('#travel-content .place-sort-list').forEach(function (list) {
+      Array.prototype.slice.call(list.querySelectorAll('.place-sort-item')).forEach(
+        function (item, index) {
+          item.dataset.manualOrder = String(index);
+        }
+      );
+    });
+  }
+
+  document.addEventListener('change', function (event) {
+    if (
+      event.target.matches(
+        '[data-list-status-filter], [data-list-rating-filter], ' +
+        '[data-list-city-filter], [data-list-sort]'
+      )
+    ) {
+      saveListView();
+      applyListSort();
+      applyFilters();
+    }
+  });
+
+  /* ---------- 点位列表收起 / 展开 ---------- */
+  var SIDE_KEY = 'travel:side-collapsed';
+  var GROUPS_KEY = 'travel:collapsed-groups';
+
+  function setSideCollapsed(collapsed) {
+    var split = document.querySelector('.map-split');
+    if (!split) return;
+    split.classList.toggle('is-side-collapsed', collapsed);
+    var openBtn = document.getElementById('place-side-open');
+    if (openBtn) openBtn.hidden = !collapsed;
+    try {
+      window.localStorage.setItem(SIDE_KEY, collapsed ? '1' : '0');
+    } catch (err) {}
+    if (window.__travelMap && window.__travelMap.map) {
+      setTimeout(function () { window.__travelMap.map.resize(); }, 60);
+    }
+  }
+
+  function restoreSideState() {
+    var collapsed = false;
+    try {
+      collapsed = window.localStorage.getItem(SIDE_KEY) === '1';
+    } catch (err) {}
+    if (collapsed) setSideCollapsed(true);
+  }
+
+  function readGroupState() {
+    try {
+      var raw = JSON.parse(window.localStorage.getItem(GROUPS_KEY) || '{}');
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function saveGroupState() {
+    var state = {};
+    document.querySelectorAll('#travel-content .place-group').forEach(function (group) {
+      if (group.classList.contains('is-collapsed')) {
+        state[group.dataset.groupKey || '__none__'] = 1;
+      }
+    });
+    try {
+      window.localStorage.setItem(GROUPS_KEY, JSON.stringify(state));
+    } catch (err) {}
+  }
+
+  function restoreGroupState() {
+    var state = readGroupState();
+    document.querySelectorAll('#travel-content .place-group').forEach(function (group) {
+      var collapsed = Boolean(state[group.dataset.groupKey || '__none__']);
+      group.classList.toggle('is-collapsed', collapsed);
+      var toggle = group.querySelector('[data-group-toggle]');
+      if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var groupToggle = event.target.closest('[data-group-toggle]');
+    if (groupToggle) {
+      event.preventDefault();
+      var group = groupToggle.closest('.place-group');
+      if (!group) return;
+      var collapsed = group.classList.toggle('is-collapsed');
+      groupToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      saveGroupState();
+      return;
+    }
+    if (event.target.closest('[data-side-collapse]')) {
+      event.preventDefault();
+      setSideCollapsed(true);
+      return;
+    }
+    if (event.target.closest('#place-side-open')) {
+      event.preventDefault();
+      setSideCollapsed(false);
+    }
+  });
+
+  /* ---------- 高德地图 ---------- */
+  function guessCategory(text) {
+    var value = String(text || '');
+    var rules = [
+      ['美食', '美食'], ['餐饮', '美食'], ['小吃', '美食'],
+      ['住宿', '住宿'], ['酒店', '住宿'], ['民宿', '住宿'],
+      ['交通', '交通'], ['机场', '交通'], ['车站', '交通'], ['地铁', '交通'],
+      ['购物', '商场'], ['商场', '商场'], ['商城', '商场'],
+      ['娱乐', '娱乐'], ['影', '娱乐'], ['乐园', '娱乐'],
+      ['景点', '景点'], ['风景', '景点'], ['公园', '景点'], ['寺', '景点']
+    ];
+    for (var i = 0; i < rules.length; i += 1) {
+      if (value.indexOf(rules[i][0]) !== -1) return rules[i][1];
+    }
+    return '';
+  }
+
+  function coords(location) {
+    if (!location) return null;
+    if (typeof location.getLng === 'function') {
+      return { lng: location.getLng(), lat: location.getLat() };
+    }
+    var parts = String(location).split(',');
+    if (parts.length === 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
+      return { lng: Number(parts[0]), lat: Number(parts[1]) };
+    }
+    return null;
+  }
+
+  function toast(message, type) {
+    if (window.showToast) window.showToast(message, type);
+  }
+
+  function resolvePoi(poi) {
+    return new Promise(function (resolve) {
+      if (!poi) return resolve(null);
+      if (poi.address && poi.location && poi.type) return resolve(poi);
+      if (poi.id && window.AMap) {
+        var ps = new AMap.PlaceSearch({ extensions: 'all' });
+        ps.getDetails(poi.id, function (status, result) {
+          var list = result && result.poiList && result.poiList.pois;
+          if (status === 'complete' && list && list.length) resolve(list[0]);
+          else resolve(poi.location ? poi : null);
+        });
+        return;
+      }
+      resolve(poi.location ? poi : null);
+    });
+  }
+
+  function initMap(places) {
+    var map = new AMap.Map('travel-map', {
+      zoom: 4,
+      center: [105, 35],
+      viewMode: '2D',
+      showLabel: true
+    });
+    map.addControl(new AMap.ToolBar({ position: { right: '12px', bottom: '72px' } }));
+
+    var infoWindow = new AMap.InfoWindow({
+      isCustom: true,
+      anchor: 'bottom-center',
+      offset: new AMap.Pixel(0, -16),
+      closeWhenClickMap: true
+    });
+    var markerEntries = [];
     var markerMap = {};
+
+    function infoContent(place) {
+      var chips = [];
+      if (place.point_category) chips.push('<span class="tag">' + escapeHtml(place.point_category) + '</span>');
+      var address = place.standard_address || [place.city, place.country].filter(Boolean).join(' · ');
+      return '' +
+        '<div class="amap-info-card">' +
+          '<div class="amap-info-head">' +
+            '<i class="status-dot" style="--dot:' + escapeHtml(place.color) + '"></i>' +
+            '<strong>' + escapeHtml(place.name) + '</strong>' +
+            '<span class="tag">' + escapeHtml(place.status_label) + '</span>' +
+          '</div>' +
+          (address ? '<p class="amap-info-address">' + escapeHtml(address) + '</p>' : '') +
+          (chips.length ? '<div class="inline-chips">' + chips.join('') + '</div>' : '') +
+          '<div class="amap-info-actions">' +
+            '<a class="btn btn-tiny btn-ghost" href="/travel/places/' + place.id + '">详情</a>' +
+            '<button type="button" class="btn btn-tiny btn-ghost"' +
+            ' data-modal-url="/travel/places/' + place.id + '/edit"' +
+            ' data-modal-title="补充信息">补充信息</button>' +
+            '<button type="button" class="btn btn-tiny btn-primary"' +
+            ' data-modal-url="/travel/places/' + place.id + '/add-to-journey"' +
+            ' data-modal-title="加入旅程">加入旅程</button>' +
+          '</div>' +
+        '</div>';
+    }
 
     function addMarker(place) {
       if (!place || place.lat == null || place.lng == null) return;
       if (markerMap[place.id]) {
-        map.removeLayer(markerMap[place.id]);
-        delete markerMap[place.id];
+        map.remove(markerMap[place.id].marker);
+        var existingIndex = markerEntries.findIndex(function (entry) {
+          return entry.place.id === place.id;
+        });
+        if (existingIndex !== -1) markerEntries.splice(existingIndex, 1);
       }
-      var rating = Math.max(0, Math.min(5, Number(place.rating) || 0));
-      var marker = L.circleMarker([Number(place.lat), Number(place.lng)], {
-        radius: 6 + rating * 1.2,
-        color: '#ffffff',
-        weight: 2,
-        fillColor: colors[place.category] || '#0071e3',
-        fillOpacity: place.visited ? 0.95 : 0.6,
-        dashArray: place.visited ? null : '4 3',
-        bubblingMouseEvents: false
-      }).addTo(map);
-      marker.bindTooltip(escapeHtml(place.name));
-      marker.on('click', function () {
-        if (window.AppModal) {
-          window.AppModal.open('/travel/places/' + place.id + '/detail', '足迹详情');
-        }
+      var dot = document.createElement('div');
+      dot.className = 'amap-point-marker';
+      dot.style.setProperty('--point-color', place.color || '#FFC8DD');
+      dot.innerHTML = '<span class="amap-point-inner"></span>';
+      var marker = new AMap.Marker({
+        position: [Number(place.lng), Number(place.lat)],
+        content: dot,
+        offset: new AMap.Pixel(-10, -10),
+        bubble: false
       });
-      markerMap[place.id] = marker;
+      marker.on('click', function () {
+        infoWindow.setContent(infoContent(place));
+        infoWindow.open(map, marker.getPosition());
+      });
+      marker.setMap(map);
+      markerMap[place.id] = { marker: marker, place: place };
+      markerEntries.push(markerMap[place.id]);
     }
 
     function removeMarker(id) {
-      if (id == null || !markerMap[id]) return;
-      map.removeLayer(markerMap[id]);
+      if (!markerMap[id]) return;
+      map.remove(markerMap[id].marker);
+      var index = markerEntries.findIndex(function (entry) { return entry.place.id === id; });
+      if (index !== -1) markerEntries.splice(index, 1);
       delete markerMap[id];
     }
 
@@ -175,39 +672,217 @@
     if (places.length) {
       var points = places
         .filter(function (place) { return place.lat != null && place.lng != null; })
-        .map(function (place) { return [Number(place.lat), Number(place.lng)]; });
-      if (points.length > 1) {
-        map.fitBounds(L.latLngBounds(points).pad(0.25));
-      } else if (points.length === 1) {
-        map.setView(points[0], 8);
-      }
+        .map(function (place) { return [Number(place.lng), Number(place.lat)]; });
+      if (points.length > 1) map.setFitView(null, false, [40, 40, 40, 40]);
+      else if (points.length === 1) map.setZoomAndCenter(10, points[0]);
     }
 
-    map.on('click', function (event) {
-      var lat = event.latlng.lat.toFixed(6);
-      var lng = event.latlng.lng.toFixed(6);
-      if (window.AppModal) {
-        window.AppModal.open(
-          '/travel/places/new?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng),
-          '新增足迹'
-        );
-      }
-    });
+    var focusId = new URLSearchParams(window.location.search).get('place');
+    if (focusId && markerMap[focusId]) {
+      var focusEntry = markerMap[focusId];
+      map.setZoomAndCenter(13, focusEntry.marker.getPosition());
+      infoWindow.setContent(infoContent(focusEntry.place));
+      infoWindow.open(map, focusEntry.marker.getPosition());
+    }
 
-    function syncMarker(event) {
+    function savePoi(poi) {
+      var point = coords(poi && poi.location);
+      if (!point) {
+        toast('未获取到该地点坐标，请换个关键词重试', 'error');
+        return;
+      }
+      var body = new URLSearchParams({
+        name: poi.name || '',
+        standard_address: poi.address || '',
+        lng: String(point.lng),
+        lat: String(point.lat),
+        point_category: guessCategory((poi.type || '') + ' ' + (poi.name || '')),
+        amap_poi_id: poi.id || '',
+        amap_type: poi.type || '',
+        city: poi.cityname || ''
+      });
+      fetch('/travel/places/poi', {
+        method: 'POST',
+        body: body,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      })
+        .then(function (response) {
+          return response.json().then(function (data) { return { ok: response.ok, data: data }; });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok || !result.data.place) {
+            throw new Error(result.data.message || '点位入库失败');
+          }
+          var saved = result.data.place;
+          removeMarker(saved.id);
+          addMarker(saved);
+          applyFilters();
+          map.setZoomAndCenter(15, [Number(saved.lng), Number(saved.lat)]);
+          infoWindow.setContent(infoContent(saved));
+          infoWindow.open(map, [Number(saved.lng), Number(saved.lat)]);
+          toast(result.data.created ? '已收藏「' + saved.name + '」' : '已更新「' + saved.name + '」');
+          var contentEl = document.getElementById('travel-content');
+          if (contentEl && window.htmx) {
+            window.htmx.ajax('GET', contentEl.dataset.refreshUrl, {
+              target: '#travel-content',
+              swap: 'outerHTML'
+            });
+          }
+        })
+        .catch(function (error) {
+          toast(error.message || '点位入库失败', 'error');
+        });
+    }
+    window.__travelSavePoi = savePoi;
+
+    window.__travelMap = { map: map, markers: markerEntries };
+
+    document.body.addEventListener('placeSaved', function (event) {
       var detail = event.detail || {};
       if (detail.id == null) return;
       removeMarker(detail.id);
       if (detail.lat && detail.lng) addMarker(detail);
-    }
-
-    document.body.addEventListener('placeSaved', syncMarker);
-    document.body.addEventListener('placeAdded', syncMarker);
+      window.__travelApplyFilters && window.__travelApplyFilters();
+    });
     document.body.addEventListener('placeDeleted', function (event) {
       var detail = event.detail || {};
-      removeMarker(detail.id);
+      if (detail.id != null) removeMarker(detail.id);
     });
+
+    /* POI 搜索补全 */
+    var searchInput = document.getElementById('poi-search');
+    if (searchInput) {
+      var auto = new AMap.AutoComplete({ input: 'poi-search', city: '全国', citylimit: false });
+      auto.on('select', function (event) {
+        var selected = event.poi || {};
+        resolvePoi(selected).then(function (poi) {
+          if (poi && poi.location) savePoi(poi);
+          else toast('未找到该地点，请换个关键词', 'error');
+        });
+      });
+      searchInput.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        var keyword = searchInput.value.trim();
+        if (!keyword) return;
+        var ps = new AMap.PlaceSearch({ pageSize: 1, extensions: 'all' });
+        ps.search(keyword, function (status, result) {
+          var list = result && result.poiList && result.poiList.pois;
+          if (status === 'complete' && list && list.length) savePoi(list[0]);
+          else toast('未找到该地点，请换个关键词', 'error');
+        });
+      });
+    }
+  }
+
+  /* ---------- 小红书候选地点 ---------- */
+  function searchPoi(ps, keyword) {
+    return new Promise(function (resolve) {
+      ps.search(keyword, function (status, result) {
+        var list = result && result.poiList && result.poiList.pois;
+        if (status === 'complete' && list && list.length && list[0].location) resolve(list[0]);
+        else resolve(null);
+      });
+    });
+  }
+
+  async function confirmCandidate(candidate, poi) {
+    var point = coords(poi.location);
+    var body = new URLSearchParams({
+      name: poi.name || candidate.name,
+      standard_address: poi.address || '',
+      amap_poi_id: poi.id || '',
+      point_category: guessCategory((poi.type || '') + ' ' + (poi.name || candidate.name)),
+      lng: String(point.lng),
+      lat: String(point.lat)
+    });
+    var response = await fetch('/travel/candidates/' + candidate.id + '/confirm', {
+      method: 'POST',
+      body: body,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    return response.ok;
+  }
+
+  function wireCandidates() {
+    var importBtn = document.getElementById('candidate-import');
+    var ignoreBtn = document.getElementById('candidate-ignore');
+    var statusEl = document.getElementById('candidate-status');
+    if (!importBtn && !ignoreBtn) return;
+
+    function selected() {
+      return Array.prototype.slice.call(document.querySelectorAll('.candidate-check:checked'))
+        .map(function (input) {
+          return { id: input.value, name: input.dataset.name };
+        });
+    }
+
+    if (importBtn) {
+      importBtn.addEventListener('click', async function () {
+        var items = selected();
+        if (!items.length) {
+          window.showToast && window.showToast('请先勾选候选地点', 'error');
+          return;
+        }
+        if (!window.AMap) {
+          window.showToast && window.showToast('高德 SDK 未加载，暂时无法匹配坐标', 'error');
+          return;
+        }
+        importBtn.disabled = true;
+        var ps = new AMap.PlaceSearch({ pageSize: 1, extensions: 'all' });
+        var ok = 0;
+        var failed = 0;
+        for (var i = 0; i < items.length; i += 1) {
+          if (statusEl) statusEl.textContent = '匹配中 ' + (i + 1) + ' / ' + items.length + '…';
+          var poi = await searchPoi(ps, items[i].name);
+          if (poi && coords(poi.location) && await confirmCandidate(items[i], poi)) ok += 1;
+          else failed += 1;
+        }
+        if (statusEl) {
+          statusEl.textContent = '成功 ' + ok + ' 个' + (failed ? '，失败 ' + failed + ' 个（可手动搜索新增）' : '');
+        }
+        if (ok) {
+          window.showToast && window.showToast('已新增 ' + ok + ' 个想去点位');
+          setTimeout(function () { window.location.reload(); }, 900);
+        } else {
+          importBtn.disabled = false;
+        }
+      });
+    }
+
+    if (ignoreBtn) {
+      ignoreBtn.addEventListener('click', async function () {
+        var items = selected();
+        if (!items.length) {
+          window.showToast && window.showToast('请先勾选候选地点', 'error');
+          return;
+        }
+        for (var i = 0; i < items.length; i += 1) {
+          await fetch('/travel/candidates/' + items[i].id + '/ignore', { method: 'POST' });
+        }
+        window.location.reload();
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    restoreSideState();
+    restoreGroupState();
+    restoreListView();
+    applyFilters();
+    wireCandidates();
+    var places = readPlaces();
+    if (!window.AMap) {
+      showFallback('高德地图未加载：请确认 AMAP_WEB_KEY 与域名白名单配置，列表仍可正常使用。');
+      return;
+    }
+    try {
+      initMap(places);
+    } catch (error) {
+      showFallback('地图初始化失败，列表仍可正常使用。');
+    }
   });
 })();
 </script>
+{% endif %}
 {% endblock %}

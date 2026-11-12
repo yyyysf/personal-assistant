@@ -1,0 +1,6 @@
+{% if amap_configured %}
+{% if amap_security_code %}
+<script>window._AMapSecurityConfig = { securityJsCode: {{ amap_security_code|tojson }} };</script>
+{% endif %}
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_web_key|urlencode }}&plugin=AMap.AutoComplete,AMap.PlaceSearch,AMap.ToolBar"></script>
+{% endif %}

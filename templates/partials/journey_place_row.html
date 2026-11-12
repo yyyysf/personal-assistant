@@ -1,0 +1,17 @@
+<div class="journey-place-row" data-place-id="{{ place.id }}"
+     x-show='matches({{ place.name|tojson }})'>
+  <label class="journey-place-pick">
+    <input type="checkbox" name="place_ids" value="{{ place.id }}" {{ 'checked' if checked }}>
+    <span class="journey-place-body">
+      <span class="journey-place-name">{{ place.name }}</span>
+      <span class="muted-sm">
+        {{ place.status_label }}
+        {% if place.point_category %} · {{ place.point_category }}{% endif %}
+        {% if place.rating %} · <span class="stars">{{ '★' * place.rating }}</span>{% endif %}
+        {% if place.standard_address %} · {{ place.standard_address }}{% endif %}
+      </span>
+    </span>
+  </label>
+  <input class="journey-place-note" type="text" name="place_note_{{ place.id }}"
+         maxlength="300" value="{{ note }}" placeholder="本次备注（可选）">
+</div>

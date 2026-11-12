@@ -1,0 +1,40 @@
+<section class="stack">
+  <header>
+    <h3>{{ place.name }}</h3>
+    <p class="muted-sm">选择一趟旅程，把这个点位加入游记。</p>
+  </header>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+  <form class="stack-form" hx-post="/travel/places/{{ place.id }}/journeys"
+        hx-target="#modal-body" hx-swap="innerHTML">
+    {% if journeys %}
+    <label class="field">
+      <span>选择旅程</span>
+      <select name="journey_id" required>
+        <option value="">请选择…</option>
+        {% for journey in journeys %}
+        <option value="{{ journey.id }}">
+          {{ journey.title }}{% if journey.date_label %} · {{ journey.date_label }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>本次备注</span>
+      <input type="text" name="note" maxlength="300"
+             placeholder="可选，例如：这里的樱花超美">
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+      <button class="btn btn-primary" type="submit">加入旅程</button>
+    </div>
+    {% else %}
+    <p class="muted-sm">还没有旅程记录。先创建一趟旅程，再把点位加进去。</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-modal-close>取消</button>
+      <button class="btn btn-primary" type="button"
+              data-modal-url="/travel/journeys/new" data-modal-title="新增旅程">+ 新建旅程</button>
+    </div>
+    {% endif %}
+  </form>
+</section>

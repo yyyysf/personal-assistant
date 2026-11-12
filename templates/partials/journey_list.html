@@ -1,0 +1,34 @@
+<div id="journey-list" class="journey-grid"
+     data-refresh-url="/travel/journeys/list{% if journey_status %}?status={{ journey_status }}{% endif %}">
+  {% for journey in journeys %}
+  <article class="journey-card" data-nav-url="/travel/journeys/{{ journey.id }}">
+    <div class="journey-cover" style="--cover-tint:{{ journey.mood_color }}">
+      {% if journey.photo_list %}
+      <img src="{{ journey.photo_list[0] }}" alt="{{ journey.title }}" loading="lazy">
+      {% else %}
+      <span class="journey-cover-placeholder">{{ journey.mood_label }}</span>
+      {% endif %}
+      <span class="mood-chip" style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
+    </div>
+    <div class="journey-card-body">
+      <h3>{{ journey.title }}</h3>
+      <p class="row-meta">{{ journey.date_label or '未填写日期' }}</p>
+      <div class="journey-card-foot">
+        <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
+        <span class="journey-cost">合计 ¥{{ journey.total_cost }}</span>
+      </div>
+    </div>
+    <div class="hover-actions">
+      <button class="icon-btn" type="button" title="编辑旅程"
+              data-modal-url="/travel/journeys/{{ journey.id }}/edit" data-modal-title="编辑旅程">✎</button>
+      <button class="icon-btn" type="button" title="删除旅程"
+              hx-post="/travel/journeys/{{ journey.id }}/delete" hx-swap="none"
+              hx-confirm="删除旅程「{{ journey.title }}」？关联点位会保留，图片将一并删除。">✕</button>
+    </div>
+  </article>
+  {% else %}
+  <div class="empty-panel journey-empty">
+    <p>还没有旅程游记。点击右上角「+ 新增旅程」，把一趟旅行完整记录下来。</p>
+  </div>
+  {% endfor %}
+</div>
