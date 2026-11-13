@@ -12,6 +12,50 @@
             aria-label="收起点位列表">收起 ›</button>
   </header>
 
+  <div class="map-list-filters" aria-label="列表筛选与排序">
+    <div class="place-side-filters">
+      <label class="place-side-filter">
+        <span>状态</span>
+        <select data-list-status-filter>
+          <option value="">全部状态</option>
+          <option value="want">未去</option>
+          <option value="visited">已去</option>
+        </select>
+      </label>
+      <label class="place-side-filter">
+        <span>星级</span>
+        <select data-list-rating-filter>
+          <option value="0">全部星级</option>
+          <option value="3">3 星以上</option>
+          <option value="4">4 星以上</option>
+          <option value="5">5 星</option>
+        </select>
+      </label>
+      <label class="place-side-filter">
+        <span>城市</span>
+        <select data-list-city-filter>
+          <option value="">全部城市</option>
+          {% for city in place_cities %}
+          <option value="{{ city }}">{{ city }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="place-side-filter">
+        <span>排序</span>
+        <select data-list-sort>
+          <option value="manual">手动顺序</option>
+          <option value="rating">星级从高到低</option>
+          <option value="city">按城市</option>
+        </select>
+      </label>
+    </div>
+    <div class="map-filter-foot">
+      <button class="btn btn-tiny btn-ghost map-filter-reset" type="button"
+              id="map-filter-reset">重置</button>
+      <span class="map-filter-count" id="map-visible-count"></span>
+    </div>
+  </div>
+
   <div class="place-side-body">
     {% for group in place_groups %}
     <section class="place-group" data-group-key="{{ group.key }}">
