@@ -66,6 +66,7 @@ COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("cost_lodging", "INTEGER DEFAULT 0"),
         ("cost_food", "INTEGER DEFAULT 0"),
         ("cost_other", "INTEGER DEFAULT 0"),
+        ("tags", "VARCHAR(200) DEFAULT ''"),
         ("photos", "TEXT DEFAULT '[]'"),
     ],
     "journey_places": [
