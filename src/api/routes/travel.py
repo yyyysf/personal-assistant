@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -37,6 +38,8 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_PHOTOS = 6
 MAX_JOURNEY_PHOTOS = 12
 POINT_STATUS = tuple(POINT_STATUS_LABELS)
+JOURNAL_YEAR_COLORS = ("#FFC8DD", "#CDF5FD", "#DDE7D8", "#E3E1F5", "#FFE0C2", "#F6E7A1")
+YEAR_UNDATED_KEY = "undated"
 
 
 def _trigger(payload: dict) -> dict[str, str]:
@@ -163,6 +166,57 @@ def _place_groups(places: list[Place]) -> list[dict]:
     return groups
 
 
+def _journey_year_key(journey: Journey) -> str:
+    value = journey.start_date or journey.end_date
+    return str(value.year) if value else YEAR_UNDATED_KEY
+
+
+def _journey_year_groups(journeys: list[Journey]) -> list[dict]:
+    """按出行年份把旅程分成手账分册，没有日期的归入「未编年」。"""
+    buckets: dict[str, list[Journey]] = {}
+    for journey in journeys:
+        buckets.setdefault(_journey_year_key(journey), []).append(journey)
+    groups: list[dict] = []
+    for key, items in buckets.items():
+        year = None if key == YEAR_UNDATED_KEY else int(key)
+        cover = next((item.photo_list[0] for item in items if item.photo_list), "")
+        photos = [
+            {"src": photo, "title": item.title, "journey_id": item.id}
+            for item in items
+            for photo in item.photo_list[:3]
+        ][:8]
+        groups.append(
+            {
+                "key": key,
+                "year": year,
+                "label": f"{year} 年" if year is not None else "未编年",
+                "cover": cover,
+                "color": JOURNAL_YEAR_COLORS[len(groups) % len(JOURNAL_YEAR_COLORS)],
+                "journeys": items,
+                "photos": photos,
+                "count": len(items),
+                "visited": sum(1 for item in items if item.status == "visited"),
+                "want": sum(1 for item in items if item.status == "want"),
+                "cost": sum(item.total_cost for item in items),
+            }
+        )
+    groups.sort(key=lambda group: (group["year"] is None, -(group["year"] or 0)))
+    return groups
+
+
+def _journey_detail_context(db: Session, journey: Journey) -> dict:
+    rows = db.execute(
+        select(JourneyPlace, Place)
+        .join(Place, JourneyPlace.place_id == Place.id)
+        .where(JourneyPlace.journey_id == journey.id)
+        .order_by(JourneyPlace.id)
+    ).all()
+    return {
+        "journey": journey,
+        "journey_places": [{"place": place, "note": link.note} for link, place in rows],
+    }
+
+
 def _normalize_tab(value: str) -> str:
     """兼容旧链接：visited/map 走地图，其余走游记。"""
     return "map" if value in {"map", "visited", "places"} else "journey"
@@ -202,6 +256,8 @@ def travel_context(
         "place_groups": _place_groups(places),
         "place_cities": cities,
         "journeys": list(journeys),
+        "journey_years": _journey_year_groups(list(journeys)),
+        "current_year": date.today().year,
         "journey_status": journey_status,
         "journey_statuses": JOURNEY_STATUS_LABELS,
         "markers": markers,
@@ -887,14 +943,41 @@ def travel_journey_list(
     stmt = select(Journey)
     if status in JOURNEY_STATUS_LABELS:
         stmt = stmt.where(Journey.status == status)
-    journeys = db.scalars(stmt.order_by(Journey.id.desc())).all()
+    journeys = list(db.scalars(stmt.order_by(Journey.id.desc())).all())
     return render_partial(
         request,
         "partials/journey_list.html",
         {
-            "journeys": list(journeys),
+            "journeys": journeys,
+            "journey_years": _journey_year_groups(journeys),
+            "current_year": date.today().year,
             "journey_status": status,
             "journey_statuses": JOURNEY_STATUS_LABELS,
+        },
+    )
+
+
+@router.get("/travel/journal/stats", response_class=HTMLResponse)
+def travel_journal_stats(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return render_partial(request, "partials/journal_stats.html", {"stats": _stats(db)})
+
+
+@router.get("/travel/journal/years", response_class=HTMLResponse)
+def travel_journal_years(
+    request: Request,
+    journey_status: str = "",
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    stmt = select(Journey)
+    if journey_status in JOURNEY_STATUS_LABELS:
+        stmt = stmt.where(Journey.status == journey_status)
+    journeys = list(db.scalars(stmt.order_by(Journey.id.desc())).all())
+    return render_partial(
+        request,
+        "partials/journal_years.html",
+        {
+            "journey_years": _journey_year_groups(journeys),
+            "current_year": date.today().year,
         },
     )
 
@@ -960,21 +1043,28 @@ async def travel_journey_create(
 def travel_journey_page(
     journey_id: int, request: Request, db: Session = Depends(get_db)
 ) -> HTMLResponse:
-    journey = _get_journey(db, journey_id)
-    rows = db.execute(
-        select(JourneyPlace, Place)
-        .join(Place, JourneyPlace.place_id == Place.id)
-        .where(JourneyPlace.journey_id == journey.id)
-        .order_by(JourneyPlace.id)
-    ).all()
-    context = {
-        "journey": journey,
-        "journey_places": [{"place": place, "note": link.note} for link, place in rows],
-        "amap_web_key": settings.amap_web_key,
-        "amap_security_code": settings.amap_security_js_code,
-        "amap_configured": settings.amap_configured,
-    }
+    context = _journey_detail_context(db, _get_journey(db, journey_id))
+    context.update(
+        {
+            "amap_web_key": settings.amap_web_key,
+            "amap_security_code": settings.amap_security_js_code,
+            "amap_configured": settings.amap_configured,
+        }
+    )
     return render(request, "journey_detail.html", context, active="travel")
+
+
+@router.get("/travel/journeys/{journey_id}/book", response_class=HTMLResponse)
+def travel_journey_book(
+    journey_id: int, request: Request, db: Session = Depends(get_db)
+) -> HTMLResponse:
+    context = _journey_detail_context(db, _get_journey(db, journey_id))
+    context["year_label"] = (
+        context["journey"].start_date.strftime("%Y 年")
+        if context["journey"].start_date
+        else "未编年"
+    )
+    return render_partial(request, "partials/modals/journey_book.html", context)
 
 
 @router.get("/travel/journeys/{journey_id}/edit", response_class=HTMLResponse)

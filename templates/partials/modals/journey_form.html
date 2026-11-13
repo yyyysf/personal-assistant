@@ -1,5 +1,5 @@
 {% set is_edit = journey is not none %}
-<form class="stack-form"
+<form class="stack-form journal-form"
       hx-post="{{ '/travel/journeys/' ~ journey.id ~ '/edit' if is_edit else '/travel/journeys/new' }}"
       hx-target="#modal-body" hx-swap="innerHTML"
       hx-encoding="multipart/form-data"
@@ -28,8 +28,8 @@
       <span>旅程状态</span>
       <div class="mood-chips">
         {% for key, label in journey_statuses.items() %}
-        <label class="mood-chip-option"
-               style="--mood:{{ '#FFC8DD' if key == 'want' else '#BDE0FE' }}">
+        <label class="mood-chip-option" data-status="{{ key }}"
+               style="--mood:{{ '#e63946' if key == 'want' else '#1d3557' }}">
           <input type="radio" name="status" value="{{ key }}" {{ 'checked' if values.status == key }}>
           <span>{{ label }}</span>
         </label>
@@ -41,7 +41,8 @@
       <span>旅途心情</span>
       <div class="mood-chips">
         {% for key, label in moods.items() %}
-        <label class="mood-chip-option" style="--mood:{{ mood_colors[key] }}">
+        <label class="mood-chip-option" data-mood="{{ key }}"
+               style="--mood:{{ mood_colors[key] }}">
           <input type="radio" name="mood" value="{{ key }}" {{ 'checked' if values.mood == key }}>
           <span>{{ label }}</span>
         </label>

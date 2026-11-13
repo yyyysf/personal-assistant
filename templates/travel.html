@@ -1,142 +1,271 @@
 {% extends "base.html" %}
-{% block title %}旅游规划 · Private Assistant{% endblock %}
-{% block page_title %}旅游规划{% endblock %}
+{% block title %}我的旅行手账 · Private Assistant{% endblock %}
+{% block page_title %}我的旅行手账{% endblock %}
 {% block subtitle %}{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="/static/css/vendor/scrawl.css">
+<link rel="stylesheet" href="/static/css/travel-journal.css">
+{% endblock %}
+
 {% block content %}
-<div class="travel-summary-row">
-  <div class="inline-stats stat-strip travel-stat-strip">
-    <span class="stat-dot-label"><i class="status-dot" style="--dot:#FFC8DD"></i><strong>{{ stats.journey_want }}</strong> 旅程想去</span>
-    <span class="stat-dot-label"><i class="status-dot" style="--dot:#BDE0FE"></i><strong>{{ stats.journey_visited }}</strong> 旅程已去过</span>
-    <span class="stat-dot-label"><i class="status-dot" style="--dot:#FFC8DD"></i><strong>{{ stats.want }}</strong> 点位想去</span>
-    <span class="stat-dot-label"><i class="status-dot" style="--dot:#BDE0FE"></i><strong>{{ stats.visited }}</strong> 点位已去</span>
-    <span><strong>{{ stats.journeys }}</strong> 趟旅程</span>
-    <span><strong>¥{{ stats.cost_total }}</strong> 旅行开销</span>
-  </div>
-  <div class="action-row">
-    <button class="btn btn-primary" type="button"
-            data-modal-url="/travel/journeys/new" data-modal-title="新增旅程">+ 新增旅程</button>
-  </div>
-</div>
+<div class="travel-journal{{ ' is-map-tab' if tab == 'map' }}">
+  <header class="journal-topbar magazine-masthead">
+    <div class="masthead-main">
+      <span class="masthead-band" aria-hidden="true">VACATION SCRAPBOOK · VOL. {{ current_year }}</span>
+      <h1 class="masthead-title">
+        <span class="masthead-cn">
+          <span class="mt-black">我的</span><span class="mt-red">旅行</span><span class="mt-blue">手账</span>
+        </span>
+        <span class="masthead-en">TRAVEL JOURNAL</span>
+        <span class="masthead-star" data-sticker="star" data-color="#ffdd33"
+              data-size="3.4rem" aria-hidden="true"></span>
+      </h1>
+    </div>
 
-<div class="travel-toolbar{{ ' is-journey' if tab == 'journey' }}">
-  <div class="view-tabs">
-    <a href="/travel?tab=journey" class="{{ 'is-active' if tab == 'journey' }}">旅程游记 · {{ stats.journeys }}</a>
-    <a href="/travel?tab=map" class="{{ 'is-active' if tab == 'map' }}">点位地图 · {{ stats.total_places }}</a>
-  </div>
-  {% if tab == 'map' %}
-  <form class="travel-search-bar" hx-get="/travel/content" hx-target="#travel-content"
-        hx-swap="outerHTML" hx-trigger="change, submit">
-    <input type="hidden" name="tab" value="map">
-    <input type="search" name="q" value="{{ filters.q }}"
-           placeholder="搜索点位、地址或城市" aria-label="关键词">
-    <button class="btn btn-primary" type="submit">筛选</button>
-    <a class="btn btn-ghost" href="/travel?tab=map">重置</a>
-  </form>
-  {% else %}
-  <div class="journey-status-filters">
-    <a href="/travel?tab=journey" class="{{ 'is-active' if not journey_status }}">全部</a>
-    {% for value, label in journey_statuses.items() %}
-    <a href="/travel?tab=journey&journey_status={{ value }}"
-       class="{{ 'is-active' if journey_status == value }}">{{ label }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-</div>
+    <div class="masthead-switch">
+      <nav class="journal-view-tabs" aria-label="旅游视图">
+        <a href="/travel?tab=journey"
+           class="journal-view-tab journal-view-tab-journey{{ ' is-active' if tab == 'journey' }}"
+           {% if tab == 'journey' %}aria-current="page"{% endif %}>旅程手账</a>
+        <a href="/travel?tab=map"
+           class="journal-view-tab journal-view-tab-map{{ ' is-active' if tab == 'map' }}"
+           {% if tab == 'map' %}aria-current="page"{% endif %}>点位地图</a>
+      </nav>
+      {% if tab == 'journey' %}
+      {% include "partials/journal_years.html" %}
+      {% endif %}
+    </div>
 
+    {% if tab == 'journey' %}
+    <div class="masthead-bar">
+      <div class="journey-status-filters journal-status-filters">
+        <a href="/travel?tab=journey" class="{{ 'is-active' if not journey_status }}">全部</a>
+        {% for value, label in journey_statuses.items() %}
+        <a href="/travel?tab=journey&journey_status={{ value }}"
+           class="{{ 'is-active' if journey_status == value }}">{{ label }}</a>
+        {% endfor %}
+      </div>
+
+      <div class="masthead-tools">
+        <div class="journal-topbar-stats" id="journal-stats">
+          {% include "partials/journal_stats.html" %}
+        </div>
+        <button class="journal-add-sticker" type="button"
+                data-modal-url="/travel/journeys/new" data-modal-title="新增旅程">
+          <span class="journal-add-plus" aria-hidden="true">+</span> 新增旅程
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </header>
+
+  <div class="journal-stage">
 {% if tab == 'journey' %}
 {% include "partials/journey_list.html" %}
 {% else %}
-<section class="panel map-panel">
-  <div class="map-split">
-    <div class="map-main">
-      {% if amap_configured %}
-      <div class="map-search-row">
-        <input id="poi-search" class="map-search-input" type="search" autocomplete="off"
-               placeholder="搜索地名、餐厅、酒店、商场…选中即收藏点位">
-        <span class="map-search-hint">高德 POI · 选中直接入库</span>
+<section class="journal-spread magazine-spread map-spread is-active">
+  <div class="journal-page map-page">
+    <div class="journal-page-inner map-page-inner">
+      {% set category_labels = {'美食': '餐厅', '住宿': '酒店', '商场': '购物'} %}
+      <div class="map-topbar-wrap">
+        <header class="map-topbar" aria-label="点位地图工具栏">
+          <h2 class="map-topbar-title">
+            <span class="map-topbar-badge map-topbar-badge-red">点位</span>
+            <span class="map-topbar-badge map-topbar-badge-blue">地图</span>
+          </h2>
+
+          <button type="button" class="map-filter-toggle" id="map-filter-toggle"
+                  aria-expanded="false" aria-controls="map-filter-panel" title="展开更多筛选">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 aria-hidden="true">
+              <path d="M3 5h18l-7 8v6l-4 2v-8z"></path>
+            </svg>
+            <span>筛选</span>
+            <span class="map-filter-caret" aria-hidden="true">▾</span>
+          </button>
+
+          {% if amap_configured %}
+          <div class="map-topbar-search">
+            <input id="poi-search" class="map-search-input" type="search" autocomplete="off"
+                   placeholder="搜索地名、餐厅、酒店…">
+          </div>
+          <div class="map-search-actions">
+            <button type="button" class="map-search-btn map-search-go"
+                    id="poi-search-submit">搜索</button>
+            <button type="button" class="map-search-btn map-search-clear"
+                    id="poi-search-clear">清空</button>
+          </div>
+          {% endif %}
+
+          <div class="map-type-tags" role="group" aria-label="点位类型筛选">
+            <button type="button" class="map-type-tag map-type-tag-all is-active"
+                    data-map-type-all aria-pressed="true">全部</button>
+            {% for name in point_categories %}
+            <label class="map-type-tag">
+              <input type="checkbox" data-filter-category="{{ name }}" checked>
+              <i class="status-dot" style="--dot:{{ category_colors[name] }}"></i>
+              <span>{{ category_labels.get(name, name) }}</span>
+            </label>
+            {% endfor %}
+          </div>
+
+          <div class="map-status-chips" role="group" aria-label="状态筛选">
+            <span class="map-filter-label">状态</span>
+            {% for value, label in point_statuses.items() %}
+            <label class="chip-check">
+              <input type="checkbox" data-filter-status="{{ value }}" checked>
+              <i class="status-dot"
+                 style="--dot:{{ '#e63946' if value == 'want' else '#1d3557' }}"></i>{{ label }}
+            </label>
+            {% endfor %}
+          </div>
+
+          <div class="map-topbar-side">
+            <button type="button" class="map-add-place" id="map-add-place">
+              <span class="map-add-plus" aria-hidden="true">+</span> 新增点位
+            </button>
+          </div>
+        </header>
+
+        <div class="map-filter-panel map-filter-pop" id="map-filter-panel"
+             aria-label="更多筛选">
+          <div class="place-side-filters" aria-label="列表筛选与排序">
+            <label class="place-side-filter">
+              <span>状态</span>
+              <select data-list-status-filter>
+                <option value="">全部状态</option>
+                <option value="want">未去</option>
+                <option value="visited">已去</option>
+              </select>
+            </label>
+            <label class="place-side-filter">
+              <span>星级</span>
+              <select data-list-rating-filter>
+                <option value="0">全部星级</option>
+                <option value="3">3 星以上</option>
+                <option value="4">4 星以上</option>
+                <option value="5">5 星</option>
+              </select>
+            </label>
+            <label class="place-side-filter">
+              <span>城市</span>
+              <select data-list-city-filter>
+                <option value="">全部城市</option>
+                {% for city in place_cities %}
+                <option value="{{ city }}">{{ city }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="place-side-filter">
+              <span>排序</span>
+              <select data-list-sort>
+                <option value="manual">手动顺序</option>
+                <option value="rating">星级从高到低</option>
+                <option value="city">按城市</option>
+              </select>
+            </label>
+          </div>
+          <div class="map-filter-foot">
+            <button class="btn btn-tiny btn-ghost map-filter-reset" type="button"
+                    id="map-filter-reset">重置</button>
+            <span class="map-filter-count" id="map-visible-count"></span>
+          </div>
+        </div>
       </div>
-      {% else %}
-      <div class="alert alert-info">
-        尚未配置 AMAP_WEB_KEY。请在 .env 中填写高德 Web端(JS API) Key 并配置域名白名单，
-        地图与 POI 检索才会启用；右侧列表仍可正常使用。
+
+      <div class="map-split">
+        <div class="map-main">
+          {% if not amap_configured %}
+          <div class="alert alert-info">
+            尚未配置 AMAP_WEB_KEY，请在 .env 填写高德 Web端(JS API) Key；右侧列表仍可正常使用。
+          </div>
+          {% endif %}
+
+          <div class="map-shell">
+            <div id="travel-map" class="travel-map" aria-label="高德旅游地图"></div>
+            <div id="map-fallback" class="map-fallback" hidden></div>
+            <button type="button" class="map-side-open" id="place-side-open" hidden>‹ 展开点位列表</button>
+          </div>
+          <p class="map-hint">圆点颜色代表分类，点击图钉查看点位详情。</p>
+
+          <div class="scrap-map-row" aria-label="手账小装饰">
+            <button type="button" class="scrap-pin scrap-pin-yellow" data-scrap-drag
+                    data-scrap-title="黄色图钉" data-scrap-tip="北京环球度假区 · 已去 · 娱乐">
+              <span class="scrap-pin-head" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="scrap-sticker" data-scrap-focus=".map-shell"
+                    data-scrap-title="地图贴纸" data-scrap-tip="拖动地图查看所有点位，图钉颜色循环红、蓝、黄。">
+              地图
+            </button>
+            <button type="button" class="scrap-ticket" data-scrap-ticket
+                    data-scrap-title="门票" data-scrap-tip="环球影城 · 成人票 ¥638 · 2026-10-18">
+              门票
+            </button>
+            <button type="button" class="scrap-arrow scrap-arrow-blue" data-scrap-focus="#travel-content"
+                    data-scrap-title="点位清单" data-scrap-tip="点这里翻到右侧点位卡片。">↗</button>
+            <span class="scrap-icon" data-scrap-icon aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="8.5"></circle>
+                <circle cx="12" cy="12" r="2.4"></circle>
+                <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"></path>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <aside class="place-side map-place-panel">
+          {% include "partials/travel_content.html" %}
+        </aside>
       </div>
+
+      {% if candidates %}
+      <section class="candidate-panel" id="candidate-panel">
+        <header class="candidate-head">
+          <div>
+            <h2>小红书候选地点</h2>
+            <p>{{ candidates|length }} 个待确认 · 被动识别，不会自动入库</p>
+          </div>
+          {% if amap_configured %}
+          <button class="btn btn-primary btn-tiny" type="button" id="candidate-import">匹配高德并新增</button>
+          {% endif %}
+        </header>
+        <div class="candidate-list">
+          {% for candidate in candidates %}
+          <label class="candidate-item">
+            <input type="checkbox" class="candidate-check" value="{{ candidate.id }}"
+                   data-name="{{ candidate.name }}">
+            <span class="candidate-name">{{ candidate.name }}</span>
+            {% if candidate.note_title %}<span class="muted-sm">来自「{{ candidate.note_title }}」</span>{% endif %}
+            {% if candidate.note_url and candidate.note_url.startswith(('http://', 'https://')) %}
+            <a href="{{ candidate.note_url }}" target="_blank" rel="noopener" class="candidate-link">原笔记 ↗</a>
+            {% endif %}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="candidate-actions">
+          <button class="btn btn-ghost btn-tiny" type="button" id="candidate-ignore">忽略选中</button>
+          <span class="muted-sm" id="candidate-status">
+            {% if not amap_configured %}配置 AMAP_WEB_KEY 后才能自动匹配坐标{% endif %}
+          </span>
+        </div>
+      </section>
       {% endif %}
-
-      <div class="map-filter" id="map-filter" aria-label="地图筛选">
-        <span class="map-filter-label">状态</span>
-        {% for value, label in point_statuses.items() %}
-        <label class="chip-check">
-          <input type="checkbox" data-filter-status="{{ value }}" checked>
-          <i class="status-dot" style="--dot:{{ status_colors[value] }}"></i>{{ label }}
-        </label>
-        {% endfor %}
-        <span class="map-filter-divider"></span>
-        <span class="map-filter-label">类型</span>
-        {% for name in point_categories %}
-        <label class="chip-check">
-          <input type="checkbox" data-filter-category="{{ name }}" checked>
-          <i class="status-dot" style="--dot:{{ category_colors[name] }}"></i>{{ name }}
-        </label>
-        {% endfor %}
-        <button class="btn btn-tiny btn-ghost map-filter-reset" type="button" id="map-filter-reset">重置</button>
-        <span class="map-filter-count" id="map-visible-count"></span>
-      </div>
-
-      <div class="map-shell">
-        <div id="travel-map" class="travel-map" aria-label="高德旅游地图"></div>
-        <div id="map-fallback" class="map-fallback" hidden></div>
-        <button type="button" class="map-side-open" id="place-side-open" hidden>‹ 展开点位列表</button>
-      </div>
-      <p class="map-hint">
-        圆点颜色代表分类：景点绿 · 美食橙 · 住宿紫 · 交通蓝 · 商场黄 · 娱乐粉 · 灰色为未分类。
-        搜索地名选中即收藏点位，点击标记查看信息。
-      </p>
     </div>
-
-    {% include "partials/travel_content.html" %}
   </div>
 </section>
-
-{% if candidates %}
-<section class="panel candidate-panel" id="candidate-panel">
-  <header class="panel-head">
-    <div>
-      <h2>小红书候选地点</h2>
-      <p class="panel-sub">{{ candidates|length }} 个待确认 · 被动识别，不会自动入库</p>
-    </div>
-    {% if amap_configured %}
-    <button class="btn btn-primary btn-tiny" type="button" id="candidate-import">匹配高德并新增</button>
-    {% endif %}
-  </header>
-  <div class="candidate-list">
-    {% for candidate in candidates %}
-    <label class="candidate-item">
-      <input type="checkbox" class="candidate-check" value="{{ candidate.id }}"
-             data-name="{{ candidate.name }}">
-      <span class="candidate-name">{{ candidate.name }}</span>
-      {% if candidate.note_title %}<span class="muted-sm">来自「{{ candidate.note_title }}」</span>{% endif %}
-      {% if candidate.note_url and candidate.note_url.startswith(('http://', 'https://')) %}
-      <a href="{{ candidate.note_url }}" target="_blank" rel="noopener" class="candidate-link">原笔记 ↗</a>
-      {% endif %}
-    </label>
-    {% endfor %}
-  </div>
-  <div class="candidate-actions">
-    <button class="btn btn-ghost btn-tiny" type="button" id="candidate-ignore">忽略选中</button>
-    <span class="muted-sm" id="candidate-status">
-      {% if not amap_configured %}配置 AMAP_WEB_KEY 后才能自动匹配坐标{% endif %}
-    </span>
-  </div>
-</section>
-{% endif %}
 
 <script type="application/json" id="places-data">{{ markers|tojson }}</script>
 {% endif %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {% include "partials/amap_loader.html" %}
+<script src="/static/js/vendor/scrawl.js" defer></script>
+<script src="/static/js/vendor/page-flip.browser.js" defer></script>
+<script src="/static/js/travel-journal.js" defer></script>
 {% if tab == 'map' %}
 <script>
 (function () {
@@ -211,8 +340,65 @@
 
   window.__travelApplyFilters = applyFilters;
 
+  var mapFilterToggle = document.getElementById('map-filter-toggle');
+  var mapFilterPanel = document.getElementById('map-filter-panel');
+  if (mapFilterToggle && mapFilterPanel) {
+    mapFilterToggle.addEventListener('click', function () {
+      var open = mapFilterPanel.classList.toggle('is-open');
+      mapFilterToggle.classList.toggle('is-open', open);
+      mapFilterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      mapFilterToggle.title = open ? '收起筛选' : '展开筛选';
+    });
+  }
+
+  var mapTypeAll = document.querySelector('[data-map-type-all]');
+  function syncMapTypeAll() {
+    if (!mapTypeAll) return;
+    var boxes = Array.prototype.slice.call(
+      document.querySelectorAll('[data-filter-category]')
+    );
+    var all = boxes.length > 0 && boxes.every(function (box) { return box.checked; });
+    mapTypeAll.classList.toggle('is-active', all);
+    mapTypeAll.setAttribute('aria-pressed', all ? 'true' : 'false');
+  }
+
+  mapTypeAll?.addEventListener('click', function () {
+    document.querySelectorAll('[data-filter-category]').forEach(function (input) {
+      input.checked = true;
+    });
+    applyFilters();
+    syncMapTypeAll();
+  });
+
+  document.getElementById('map-add-place')?.addEventListener('click', function () {
+    var input = document.getElementById('poi-search');
+    if (!input) {
+      toast('尚未配置 AMAP_WEB_KEY，暂时无法通过搜索新增点位', 'error');
+      return;
+    }
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus();
+  });
+
+  document.getElementById('poi-search-submit')?.addEventListener('click', function () {
+    if (window.__travelPoiSearch) window.__travelPoiSearch();
+    else toast('高德地图未加载，暂时无法搜索点位', 'error');
+  });
+
+  document.getElementById('poi-search-clear')?.addEventListener('click', function () {
+    var input = document.getElementById('poi-search');
+    if (!input) return;
+    input.value = '';
+    input.focus();
+  });
+
+  syncMapTypeAll();
+
   document.addEventListener('change', function (event) {
-    if (event.target.matches('[data-filter-status], [data-filter-category]')) applyFilters();
+    if (event.target.matches('[data-filter-status], [data-filter-category]')) {
+      applyFilters();
+      if (event.target.matches('[data-filter-category]')) syncMapTypeAll();
+    }
   });
 
   document.getElementById('map-filter-reset')?.addEventListener('click', function () {
@@ -220,6 +406,7 @@
       input.checked = true;
     });
     applyFilters();
+    syncMapTypeAll();
   });
 
   document.body.addEventListener('htmx:afterSwap', function () {
@@ -605,6 +792,7 @@
     });
     var markerEntries = [];
     var markerMap = {};
+    var pinColors = ['#e63946', '#1d3557', '#ffdd33'];
 
     function infoContent(place) {
       var chips = [];
@@ -642,12 +830,12 @@
       }
       var dot = document.createElement('div');
       dot.className = 'amap-point-marker';
-      dot.style.setProperty('--point-color', place.color || '#FFC8DD');
+      dot.style.setProperty('--point-color', pinColors[markerEntries.length % pinColors.length]);
       dot.innerHTML = '<span class="amap-point-inner"></span>';
       var marker = new AMap.Marker({
         position: [Number(place.lng), Number(place.lat)],
         content: dot,
-        offset: new AMap.Pixel(-10, -10),
+        offset: new AMap.Pixel(-12, -24),
         bubble: false
       });
       marker.on('click', function () {
@@ -728,6 +916,14 @@
               swap: 'outerHTML'
             });
           }
+          var statsEl = document.getElementById('journal-stats');
+          if (statsEl && window.htmx) {
+            window.htmx.ajax('GET', '/travel/journal/stats', {
+              source: statsEl,
+              target: '#journal-stats',
+              swap: 'innerHTML'
+            });
+          }
         })
         .catch(function (error) {
           toast(error.message || '点位入库失败', 'error');
@@ -760,9 +956,7 @@
           else toast('未找到该地点，请换个关键词', 'error');
         });
       });
-      searchInput.addEventListener('keydown', function (event) {
-        if (event.key !== 'Enter') return;
-        event.preventDefault();
+      window.__travelPoiSearch = function () {
         var keyword = searchInput.value.trim();
         if (!keyword) return;
         var ps = new AMap.PlaceSearch({ pageSize: 1, extensions: 'all' });
@@ -771,6 +965,11 @@
           if (status === 'complete' && list && list.length) savePoi(list[0]);
           else toast('未找到该地点，请换个关键词', 'error');
         });
+      };
+      searchInput.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        window.__travelPoiSearch();
       });
     }
   }

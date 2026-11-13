@@ -11,7 +11,7 @@
   <script src="/static/js/vendor/htmx.min.js" defer></script>
   {% block styles %}{% endblock %}
 </head>
-<body>
+<body{% if active == 'travel' %} class="travel-immersive"{% endif %}>
   <div id="timer-banner" class="timer-banner" hidden>
     <span class="timer-banner-dot"></span>
     <span class="timer-banner-label">专注中</span>
@@ -19,8 +19,15 @@
     <span id="timer-banner-title" class="timer-banner-title"></span>
     <button type="button" id="timer-banner-open" class="btn btn-tiny btn-ghost">查看计时台</button>
   </div>
+  {% if active == 'travel' %}
+  <button type="button" class="travel-nav-toggle" id="travel-nav-toggle"
+          aria-controls="app-sidebar" aria-expanded="false" aria-label="展开导航">
+    <span class="travel-nav-glyph" aria-hidden="true">☰</span>
+  </button>
+  <div class="travel-nav-scrim" id="travel-nav-scrim" hidden></div>
+  {% endif %}
   <div class="app-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
       <a class="brand" href="/">
         <span class="brand-mark"></span>
         <span class="brand-text">
