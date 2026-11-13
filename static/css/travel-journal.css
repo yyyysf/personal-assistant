@@ -5331,8 +5331,8 @@ body.travel-immersive:has(.travel-journal.is-journey-tab) .main-wrap {
     min-height: 0;
     overflow: hidden;
   }
-  /* 左页照片拼贴可收缩，矮屏时不把整页顶破 */
-  .travel-journal.is-journey-tab .journal-page-left .journal-photo-collage {
+  /* 左页拼贴视口可收缩，矮屏时整块拼贴按视口缩放，不再裁掉下半截 */
+  .travel-journal.is-journey-tab .journal-page-left .collage-zoom-viewport {
     flex: 0 1 auto;
     min-height: 0;
     overflow: hidden;
@@ -5362,10 +5362,6 @@ body.travel-immersive:has(.travel-journal.is-journey-tab) .main-wrap {
   width: 100%;
   transition: transform 0.42s cubic-bezier(0.22, 0.68, 0.2, 1);
   will-change: transform;
-}
-.journal-pager-spacer {
-  flex: none;
-  width: 100%;
 }
 @media (prefers-reduced-motion: reduce) {
   .journal-pager-track {
@@ -5484,4 +5480,64 @@ body.travel-immersive:has(.travel-journal.is-journey-tab) .main-wrap {
   .journal-flip-edge {
     display: none;
   }
+}
+
+/* =========================================================
+   二十一、旅程小结 · 照片跳转与放大
+   ========================================================= */
+
+/* 便签只留一行统计，高度固定，文字完整显示 */
+.travel-journal.is-journey-tab .journal-sticky-note.journal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  margin: 16px 10px 14px 0;
+  padding: 6px 14px !important;
+}
+.journal-summary .journal-summary-line {
+  width: 100%;
+  margin: 0;
+  color: #4a3c1c;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.journal-summary .journal-summary-line b {
+  color: #b3362f;
+}
+
+/* 照片即旅程入口：点图开旅程 */
+.travel-journal.is-journey-tab .journal-polaroid {
+  cursor: pointer;
+}
+.travel-journal.is-journey-tab .journal-polaroid:focus-visible {
+  outline: 2px dashed var(--j-red);
+  outline-offset: 4px;
+}
+
+/* 拼贴视口：固定大小，整块拼贴（照片/贴纸/文字/胶带/编号）一起缩放平移 */
+.collage-zoom-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  cursor: zoom-in;
+  touch-action: pan-y;
+}
+.collage-zoom-viewport.is-zoomed {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.collage-zoom-viewport.is-panning {
+  cursor: grabbing;
+}
+.collage-zoom-stage {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.collage-zoom-stage img {
+  -webkit-user-drag: none;
+  user-select: none;
 }

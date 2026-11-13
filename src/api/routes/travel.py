@@ -1,6 +1,7 @@
 """旅游模块：高德 GCJ02 点位库与旅程游记。"""
 
 import json
+import random
 import uuid
 from datetime import date
 from pathlib import Path
@@ -180,11 +181,16 @@ def _journey_year_groups(journeys: list[Journey]) -> list[dict]:
     for key, items in buckets.items():
         year = None if key == YEAR_UNDATED_KEY else int(key)
         cover = next((item.photo_list[0] for item in items if item.photo_list), "")
+        # 每段旅程随机抽一张照片放进拼贴，照片点击后回到对应旅程
         photos = [
-            {"src": photo, "title": item.title, "journey_id": item.id}
+            {
+                "src": random.choice(item.photo_list),
+                "title": item.title,
+                "journey_id": item.id,
+            }
             for item in items
-            for photo in item.photo_list[:3]
-        ][:8]
+            if item.photo_list
+        ][:6]
         groups.append(
             {
                 "key": key,
