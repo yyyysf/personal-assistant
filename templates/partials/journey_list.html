@@ -25,23 +25,28 @@
         </header>
 
         {% if group.photos %}
-        <div class="journal-photo-collage magazine-collage">
-          <span class="collage-block collage-block-red" aria-hidden="true"></span>
-          <span class="collage-block collage-block-blue" aria-hidden="true"></span>
-          <span class="collage-dots" aria-hidden="true"></span>
-          <span class="collage-stripes" aria-hidden="true"></span>
-          <span class="collage-big-number" aria-hidden="true">{{ group.photos|length }}</span>
-          <span class="collage-arrow" aria-hidden="true">↗</span>
-          {% for photo in group.photos[:6] %}
-          <figure class="journal-polaroid{{ ' is-hero' if loop.first }}"
-                  style="--tilt:{{ polaroid_tilts[loop.index0 % 6] }}deg">
-            <span class="journal-pin" aria-hidden="true"></span>
-            <span class="journal-photo-tape" aria-hidden="true"></span>
-            <span class="journal-photo-badge" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
-            <img src="{{ photo.src }}" alt="{{ photo.title }}" loading="lazy">
-            <figcaption>{{ photo.title }}</figcaption>
-          </figure>
-          {% endfor %}
+        <div class="collage-zoom-viewport" data-collage-zoom>
+          <div class="journal-photo-collage magazine-collage collage-zoom-stage" data-collage-stage>
+            <span class="collage-block collage-block-red" aria-hidden="true"></span>
+            <span class="collage-block collage-block-blue" aria-hidden="true"></span>
+            <span class="collage-dots" aria-hidden="true"></span>
+            <span class="collage-stripes" aria-hidden="true"></span>
+            <span class="collage-big-number" aria-hidden="true">{{ group.photos|length }}</span>
+            <span class="collage-arrow" aria-hidden="true">↗</span>
+            {% for photo in group.photos[:6] %}
+            <figure class="journal-polaroid{{ ' is-hero' if loop.first }}"
+                    style="--tilt:{{ polaroid_tilts[loop.index0 % 6] }}deg"
+                    role="button" tabindex="0"
+                    data-journey-book-url="/travel/journeys/{{ photo.journey_id }}/book"
+                    data-journey-title="{{ photo.title }}">
+              <span class="journal-pin" aria-hidden="true"></span>
+              <span class="journal-photo-tape" aria-hidden="true"></span>
+              <span class="journal-photo-badge" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+              <img src="{{ photo.src }}" alt="{{ photo.title }}" loading="lazy">
+              <figcaption>{{ photo.title }}</figcaption>
+            </figure>
+            {% endfor %}
+          </div>
         </div>
         {% else %}
         <div class="journal-empty-photos">
@@ -52,11 +57,9 @@
         </div>
         {% endif %}
 
-        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach">
+        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach journal-summary">
           <span class="journal-note-tape sw-washi sw-washi-yellow" aria-hidden="true"></span>
-          <strong>{{ group.label }} 小结</strong>
-          <p>{{ group.count }} 篇游记 · 已去过 {{ group.visited }} · 想去 {{ group.want }}</p>
-          <p>这一年花了 <b>¥{{ group.cost }}</b></p>
+          <p class="journal-summary-line">{{ group.count }} 篇游记 · 已去过 {{ group.visited }} · 想去 {{ group.want }} · 花费 <b>¥{{ group.cost }}</b></p>
         </div>
 
         {% if group.journeys %}
@@ -193,10 +196,9 @@
                 data-size="3rem" aria-hidden="true"></span>
           <p>还没有照片。下一次出发时，记得把风景贴在这里。</p>
         </div>
-        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach">
+        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach journal-summary">
           <span class="journal-note-tape sw-washi sw-washi-yellow" aria-hidden="true"></span>
-          <strong>{{ current_year }} 年小结</strong>
-          <p>0 篇游记 · 空白的一页</p>
+          <p class="journal-summary-line">0 篇游记 · 已去过 0 · 想去 0 · 花费 <b>¥0</b></p>
         </div>
       </div>
     </div>

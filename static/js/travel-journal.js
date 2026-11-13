@@ -128,6 +128,7 @@
     }
     observeReveals(target);
     setupJourneyPager(target);
+    setupCollageZoom(target);
     refreshScrawl();
   }
 
@@ -138,7 +139,8 @@
 
   /* ---------- 右页旅程卡片：一屏之内翻页 ---------- */
   var pagerResizeTimer = null;
-  var PAGER_TOP_ROOM = 12;
+  /* 首卡下移量：覆盖编号贴纸（top:-17px）与卡片倾斜后的上沿，下一页完全藏进裁切区 */
+  var PAGER_TOP_ROOM = 24;
 
   function journeyList(spread) {
     return qs('.journey-sticker-list', spread);
@@ -170,6 +172,7 @@
     var track = qs('.journal-pager-track', list);
     if (track) {
       qsa('.journey-sticker', track).forEach(function (card) {
+        card.style.marginTop = '';
         list.appendChild(card);
       });
       track.parentNode.removeChild(track);
@@ -262,22 +265,19 @@
       });
     }
 
-    /* 每页末尾补齐留白：翻页后下一页不会从页脚探出半张卡片 */
+    /* 每页首卡补足空档：翻页后每页第一张卡片都落在同一高度 */
+    var siblingMargin = 0;
     if (starts.length > 1) {
+      siblingMargin = parseFloat(window.getComputedStyle(cards[1]).marginTop) || 0;
       var shift = 0;
       for (var p = 1; p < starts.length; p += 1) {
-        var natural = starts[p] + shift;
-        var gap = pageHeight - (natural - starts[p - 1]);
+        var gap = pageHeight - (starts[p] + shift - starts[p - 1]);
         if (gap > 0) {
-          var spacer = document.createElement('div');
-          spacer.className = 'journal-pager-spacer';
-          spacer.style.height = gap + 'px';
-          spacer.setAttribute('aria-hidden', 'true');
-          track.insertBefore(spacer, pageFirstCards[p]);
+          pageFirstCards[p].style.marginTop = (siblingMargin + gap) + 'px';
           shift += gap;
-          starts[p] = natural + gap;
+          starts[p] = starts[p - 1] + pageHeight;
         } else {
-          starts[p] = natural;
+          starts[p] = starts[p] + shift;
         }
       }
     }
@@ -290,6 +290,172 @@
     if (!root) return;
     var active = qs('.journal-spread.is-active', root);
     if (active) setupJourneyPager(active);
+  }
+
+  /* ---------- 左页拼贴：整块缩放 / 平移（视口尺寸固定） ---------- */
+  var collageStates = new WeakMap();
+  var collagePan = null;
+  var COLLAGE_MAX_ZOOM = 4;
+
+  function collageStage(view) {
+    return view ? view.querySelector('[data-collage-stage]') : null;
+  }
+
+  function syncCollageMetrics(view) {
+    var stage = collageStage(view);
+    if (!stage) return null;
+    var state = collageStates.get(view);
+    if (!state) {
+      state = { scale: 1, fit: 1, tx: 0, ty: 0 };
+      collageStates.set(view, state);
+    }
+    state.stageW = stage.offsetWidth;
+    state.stageH = stage.offsetHeight;
+    state.viewW = view.clientWidth;
+    state.viewH = view.clientHeight;
+    if (!state.stageW || !state.viewW || !state.viewH) return null;
+    state.fit = Math.min(state.viewW / state.stageW, state.viewH / state.stageH, 1);
+    return state;
+  }
+
+  function clampCollagePan(state) {
+    var scaledW = state.stageW * state.scale;
+    var scaledH = state.stageH * state.scale;
+    if (scaledW <= state.viewW) {
+      state.tx = (state.viewW - scaledW) / 2;
+    } else {
+      state.tx = Math.min(0, Math.max(state.viewW - scaledW, state.tx));
+    }
+    if (scaledH <= state.viewH) {
+      state.ty = (state.viewH - scaledH) / 2;
+    } else {
+      state.ty = Math.min(0, Math.max(state.viewH - scaledH, state.ty));
+    }
+  }
+
+  function applyCollage(view, state) {
+    var stage = collageStage(view);
+    if (!stage) return;
+    stage.style.transform =
+      'translate(' + state.tx + 'px,' + state.ty + 'px) scale(' + state.scale + ')';
+    view.classList.toggle('is-zoomed', state.scale > state.fit + 0.001);
+  }
+
+  function setupCollageZoom(spread) {
+    if (!spread) return;
+    var view = qs('.collage-zoom-viewport', spread);
+    if (!view) return;
+    var previous = collageStates.get(view);
+    var wasFit = !previous || Math.abs(previous.scale - previous.fit) < 0.02;
+    var state = syncCollageMetrics(view);
+    if (!state) return;
+    state.scale = wasFit
+      ? state.fit
+      : Math.min(state.fit * COLLAGE_MAX_ZOOM, Math.max(state.fit, state.scale));
+    clampCollagePan(state);
+    applyCollage(view, state);
+  }
+
+  function zoomCollage(view, nextScale, anchorX, anchorY) {
+    var state = syncCollageMetrics(view);
+    if (!state) return;
+    var clamped = Math.min(state.fit * COLLAGE_MAX_ZOOM, Math.max(state.fit, nextScale));
+    if (Math.abs(clamped - state.scale) < 0.001) return;
+    var ratio = clamped / state.scale;
+    state.tx = anchorX - (anchorX - state.tx) * ratio;
+    state.ty = anchorY - (anchorY - state.ty) * ratio;
+    state.scale = clamped;
+    clampCollagePan(state);
+    applyCollage(view, state);
+  }
+
+  document.addEventListener(
+    'wheel',
+    function (event) {
+      var view = event.target.closest('.collage-zoom-viewport');
+      if (!view || event.ctrlKey) return;
+      event.preventDefault();
+      var rect = view.getBoundingClientRect();
+      var state = collageStates.get(view);
+      var factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+      zoomCollage(
+        view,
+        (state ? state.scale : 1) * factor,
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
+    },
+    { passive: false }
+  );
+
+  document.addEventListener('pointerdown', function (event) {
+    if (event.button !== 0) return;
+    var view = event.target.closest('.collage-zoom-viewport');
+    if (!view) return;
+    var state = collageStates.get(view);
+    if (!state || state.scale <= state.fit + 0.001) return;
+    collagePan = {
+      view: view,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      baseX: state.tx,
+      baseY: state.ty,
+      moved: false,
+    };
+    view.classList.add('is-panning');
+  });
+
+  document.addEventListener('pointermove', function (event) {
+    if (!collagePan || event.pointerId !== collagePan.pointerId) return;
+    var dx = event.clientX - collagePan.startX;
+    var dy = event.clientY - collagePan.startY;
+    if (!collagePan.moved && Math.abs(dx) + Math.abs(dy) > 3) {
+      collagePan.moved = true;
+      /* 确认是拖拽后再捕获指针，避免普通点击被重定向到视口 */
+      try {
+        collagePan.view.setPointerCapture(event.pointerId);
+      } catch (err) {
+        /* 忽略 */
+      }
+    }
+    if (!collagePan.moved) return;
+    var view = collagePan.view;
+    var state = collageStates.get(view);
+    if (!state) return;
+    state.tx = collagePan.baseX + dx;
+    state.ty = collagePan.baseY + dy;
+    clampCollagePan(state);
+    applyCollage(view, state);
+  });
+
+  function endCollagePan(event) {
+    if (!collagePan) return;
+    if (event && event.pointerId !== undefined && event.pointerId !== collagePan.pointerId) return;
+    var view = collagePan.view;
+    if (collagePan.moved) {
+      view.dataset.dragMoved = '1';
+      window.setTimeout(function () {
+        delete view.dataset.dragMoved;
+      }, 0);
+    }
+    view.classList.remove('is-panning');
+    try {
+      view.releasePointerCapture(collagePan.pointerId);
+    } catch (err) {
+      /* 忽略 */
+    }
+    collagePan = null;
+  }
+
+  document.addEventListener('pointerup', endCollagePan);
+  document.addEventListener('pointercancel', endCollagePan);
+
+  function refreshActiveCollage() {
+    var root = rootEl();
+    if (!root) return;
+    var active = qs('.journal-spread.is-active', root);
+    if (active) setupCollageZoom(active);
   }
 
   /* ---------- 旅程手记卡片（单张纸页，不做书本翻页） ---------- */
@@ -529,6 +695,11 @@
     }
     var journeyTrigger = event.target.closest('[data-journey-book-url]');
     if (journeyTrigger) {
+      var zoomView = journeyTrigger.closest('[data-collage-zoom]');
+      if (zoomView && zoomView.dataset.dragMoved === '1') {
+        delete zoomView.dataset.dragMoved;
+        return;
+      }
       event.preventDefault();
       openJourney(journeyTrigger.dataset.journeyBookUrl, journeyTrigger.dataset.journeyTitle);
     }
@@ -537,6 +708,18 @@
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && document.body.classList.contains('nav-open')) {
       setNavOpen(false);
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      var keyEl = event.target;
+      if (keyEl && keyEl.closest) {
+        if (keyEl.closest('button, a, input, textarea, select')) return;
+        var keyJourney = keyEl.closest('[data-journey-book-url][role="button"]');
+        if (keyJourney) {
+          event.preventDefault();
+          openJourney(keyJourney.dataset.journeyBookUrl, keyJourney.dataset.journeyTitle);
+          return;
+        }
+      }
     }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     var target = event.target;
@@ -550,11 +733,15 @@
 
   window.addEventListener('load', function () {
     refreshActivePager();
+    refreshActiveCollage();
   });
 
   window.addEventListener('resize', function () {
     if (pagerResizeTimer) window.clearTimeout(pagerResizeTimer);
-    pagerResizeTimer = window.setTimeout(refreshActivePager, 180);
+    pagerResizeTimer = window.setTimeout(function () {
+      refreshActivePager();
+      refreshActiveCollage();
+    }, 180);
   });
 
   /* 书本弹窗关闭时先合上，再关闭对话框 */
