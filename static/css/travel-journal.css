@@ -4833,29 +4833,6 @@ body.travel-immersive {
   align-items: center;
   gap: 6px;
 }
-.map-filter-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 9px;
-  border: 1px solid rgba(17, 17, 17, 0.3);
-  background: #fffaf0;
-  color: #3a332d;
-  font-family: var(--sw-font-hand);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  box-shadow: 1px 1px 0 rgba(17, 17, 17, 0.07);
-  transition: background 0.15s ease;
-}
-.map-filter-toggle svg { width: 15px; height: 15px; }
-.map-filter-caret { font-size: 11px; line-height: 1; }
-.map-filter-toggle:hover,
-.map-filter-toggle.is-open { background: rgba(255, 221, 51, 0.6); }
-
 .map-topbar-search {
   flex: 1 1 150px;
   min-width: 108px;
@@ -4983,42 +4960,6 @@ body.travel-immersive {
 }
 .map-add-plus { color: var(--j-red); font-weight: 900; }
 
-/* 筛选面板：默认收起，点漏斗图标展开 */
-.map-filter-panel { display: none; }
-.map-filter-panel.is-open { display: block; }
-.map-filter-panel .map-filter {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(17, 17, 17, 0.28);
-  background: #fffdf6;
-  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.08);
-}
-.map-filter-panel .map-keyword-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-.map-filter-panel .map-keyword-search input[type="search"] {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(17, 17, 17, 0.28);
-  background: #ffffff;
-  color: var(--j-ink);
-  font-family: var(--sw-font-hand);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-.map-filter-panel .map-keyword-search .btn { font-size: 14px; }
-
 /* ---------- 字号与行高统一（旅游模块） ---------- */
 .travel-journal,
 .is-journey-book,
@@ -5039,12 +4980,9 @@ body.travel-immersive {
 
 /* 筛选、按钮、输入、列表正文 14px */
 .travel-journal .map-topbar,
-.travel-journal .map-filter-panel,
-.travel-journal .map-filter-toggle,
 .travel-journal .map-type-tag,
 .travel-journal .map-add-place,
 .travel-journal .map-search-input,
-.travel-journal .map-keyword-search input,
 .travel-journal .map-filter-label,
 .travel-journal .map-filter-reset,
 .travel-journal .map-spread .chip-check,
@@ -5139,7 +5077,6 @@ body.travel-immersive {
   .map-topbar-stats { gap: 3px; }
   .map-topbar-stats .journal-stat-sticker { padding: 2px 6px 3px; }
   .map-topbar-stats .journal-stat-sticker strong { font-size: 14px; }
-  .map-filter-panel .map-filter { padding: 8px 9px; gap: 6px 8px; }
   .map-spread .place-sort-item { grid-template-columns: 12px minmax(0, 1fr) auto 72px; }
   .map-spread .place-star { font-size: 13px; }
 }
@@ -5160,30 +5097,30 @@ body.travel-immersive {
   min-width: 0;
 }
 
-/* 更多筛选：从工具栏“筛选”按钮展开的浮层，不占布局高度 */
-.map-filter-pop {
-  position: absolute;
-  top: calc(100% + 7px);
-  left: 0;
-  z-index: 80;
-  display: none;
-  width: min(560px, 100%);
-  padding: 10px 12px;
-  border: 1px solid rgba(17, 17, 17, 0.34);
+/* 列表筛选：位于点位列表标题下方，只作用于右侧列表 */
+.map-list-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px 9px;
+  border: 1px dashed rgba(17, 17, 17, 0.32);
   background: #fffdf6;
-  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.12);
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.06);
 }
-.map-filter-pop.is-open { display: block; }
-.map-filter-pop .place-side-filters {
+.map-list-filters .place-side-filters {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+  gap: 6px 10px;
   padding: 0;
 }
-.map-filter-pop .place-side-filter {
+.map-list-filters .place-side-filter {
   font-family: var(--sw-font-hand);
   letter-spacing: 0;
   color: #5b5148;
+}
+.map-list-filters .map-filter-foot {
+  margin-top: 0;
+  padding-top: 6px;
 }
 
 .map-status-chips {
@@ -5221,14 +5158,13 @@ body.travel-immersive {
 }
 
 .map-place-panel .place-side-body { max-height: none; }
-.map-main .scrap-map-row { margin: auto 0 0; }
 
 @media (max-width: 1000px) {
   .map-place-panel .place-side-body { max-height: 460px; }
 }
 @media (max-width: 640px) {
-  .map-filter-pop { width: 100%; padding: 9px 10px; }
-  .map-filter-pop .place-side-filters { gap: 7px 10px; }
+  .map-list-filters { padding: 7px 8px 8px; }
+  .map-list-filters .place-side-filters { gap: 6px 8px; }
 }
 
 /* 桌面双栏时让地图填满左栏高度，避免纸面留白 */
@@ -5242,5 +5178,310 @@ body.travel-immersive {
     flex: 1 1 auto;
     height: auto;
     min-height: clamp(340px, 44vh, 560px);
+  }
+}
+
+/* =========================================================
+   十九、点位地图：大标题随页滚走，工具栏吸顶 + 面板占满一屏
+   ========================================================= */
+
+/* 工具栏吸顶：滚过报头后固定在窗口顶部 */
+.travel-journal.is-map-tab .map-topbar-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: 4px 0;
+  background: var(--j-paper);
+}
+
+/* 主体固定高度：吸顶后地图 + 列表正好占满剩余视口 */
+body.travel-immersive:has(.travel-journal.is-map-tab) .main-wrap {
+  padding-bottom: 24px;
+}
+.travel-journal.is-map-tab .map-page {
+  padding-bottom: 0;
+}
+.travel-journal.is-map-tab .map-page-inner {
+  overflow: visible;
+  padding-bottom: 0;
+}
+.travel-journal.is-map-tab .map-split {
+  height: calc(100dvh - var(--travel-toolbar-h, 52px) - 28px);
+  min-height: 320px;
+  overflow: hidden;
+}
+.travel-journal.is-map-tab .candidate-panel {
+  max-height: 22vh;
+  overflow-y: auto;
+}
+
+/* 左栏地图占满可用高度 */
+.travel-journal.is-map-tab .map-split.is-side-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.travel-journal.is-map-tab .map-split.is-side-collapsed .place-side {
+  display: none;
+}
+.travel-journal.is-map-tab .map-split > .map-main,
+.travel-journal.is-map-tab .map-split > .place-side {
+  min-height: 0;
+  overflow: hidden;
+}
+.travel-journal.is-map-tab .map-main .map-shell {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.travel-journal.is-map-tab .map-main .travel-map {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+/* 右栏：标题与筛选固定，仅点位条目滚动 */
+.travel-journal.is-map-tab .map-place-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.travel-journal.is-map-tab .map-place-panel > .place-side-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.travel-journal.is-map-tab .map-place-panel .place-side-head,
+.travel-journal.is-map-tab .map-place-panel .map-list-filters,
+.travel-journal.is-map-tab .map-place-panel > .place-side-inner > .alert {
+  flex: 0 0 auto;
+}
+.travel-journal.is-map-tab .map-place-panel .place-side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding-bottom: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.travel-journal.is-map-tab .map-place-panel .place-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 2px 0 3px;
+  background: var(--j-cream);
+}
+
+@media (min-width: 761px) and (max-width: 1000px) {
+  .travel-journal.is-map-tab .map-split {
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.95fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .travel-journal.is-map-tab .map-main .travel-map {
+    min-height: 0;
+  }
+}
+@media (max-width: 760px) {
+  .travel-journal.is-map-tab .map-topbar-wrap {
+    top: 54px;
+  }
+  .travel-journal.is-map-tab .map-split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(140px, 28%) minmax(0, 1fr);
+    height: calc(100dvh - var(--travel-toolbar-h, 52px) - 54px - 28px);
+  }
+  .travel-journal.is-map-tab .map-page-inner {
+    gap: 8px;
+    padding: 10px 10px 0;
+  }
+  .travel-journal.is-map-tab .map-place-panel .place-side-head .panel-sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .travel-journal.is-map-tab .map-list-filters {
+    padding: 6px 7px 7px;
+  }
+}
+
+/* =========================================================
+   二十、旅程手账：一屏固定高度 + 手账翻页
+   ========================================================= */
+
+/* 书页占一屏：滚过报头后整本手账正好落在视口里 */
+body.travel-immersive:has(.travel-journal.is-journey-tab) .main-wrap {
+  padding-bottom: 24px;
+}
+
+@media (min-width: 901px) {
+  .travel-journal.is-journey-tab .journal-bookcase {
+    height: calc(100dvh - 48px);
+    min-height: 560px;
+    margin-bottom: 0;
+  }
+  .travel-journal.is-journey-tab .journal-spread {
+    height: 100%;
+    overflow: hidden;
+  }
+  .travel-journal.is-journey-tab .journal-page {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .travel-journal.is-journey-tab .journal-page-inner {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  /* 左页照片拼贴可收缩，矮屏时不把整页顶破 */
+  .travel-journal.is-journey-tab .journal-page-left .journal-photo-collage {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+.travel-journal.is-journey-tab .journal-page-right .journal-page-inner {
+  display: flex;
+  flex-direction: column;
+}
+.travel-journal.is-journey-tab .journey-sticker-list {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.travel-journal.is-journey-tab .journey-sticker-list.journal-paged {
+  overflow: visible;
+  clip-path: inset(0 -24px 0 -24px);
+  margin-bottom: -4px;
+}
+
+/* 翻页轨道：按页平移，超出部分由上一层的 clip 裁掉 */
+.journal-pager-track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  transition: transform 0.42s cubic-bezier(0.22, 0.68, 0.2, 1);
+  will-change: transform;
+}
+.journal-pager-spacer {
+  flex: none;
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .journal-pager-track {
+    transition: none;
+  }
+}
+
+/* 底部页码：回形针夹住的小标签 */
+.journal-pager {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 8px auto 0;
+  padding: 3px 12px 4px;
+  border: 1.5px solid rgba(17, 17, 17, 0.4);
+  background: #fffdf6;
+  box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.12);
+  rotate: -0.5deg;
+}
+.journal-pager[hidden] {
+  display: none;
+}
+.journal-pager-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1.5px solid rgba(17, 17, 17, 0.45);
+  background: #ffffff;
+  color: var(--j-black);
+  font-family: var(--sw-font-hand);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.16s ease, translate 0.16s ease;
+}
+.journal-pager-btn:hover:not(:disabled) {
+  background: var(--j-yellow);
+  translate: 0 -1px;
+}
+.journal-pager-btn:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+.journal-pager-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--j-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #6a5f55;
+}
+.journal-pager-count b {
+  font-size: 0.95rem;
+  color: var(--j-red);
+}
+
+/* 书页左右边缘：翻页热区 + 箭头贴纸 */
+.journal-flip-edges {
+  display: contents;
+}
+.journal-flip-edges[hidden] {
+  display: none;
+}
+.journal-flip-edge {
+  position: absolute;
+  top: 50%;
+  z-index: 12;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 62px;
+  padding: 0;
+  border: 1.5px solid rgba(17, 17, 17, 0.42);
+  background: rgba(255, 253, 246, 0.94);
+  color: var(--j-black);
+  font-family: var(--sw-font-hand);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.14);
+  transition: opacity 0.2s ease, background 0.2s ease, translate 0.2s ease;
+}
+.journal-flip-edge.is-prev {
+  left: 6px;
+}
+.journal-flip-edge.is-next {
+  right: 6px;
+}
+.journal-spread.has-pages .journal-flip-edge {
+  opacity: 0.72;
+  pointer-events: auto;
+}
+.journal-spread.has-pages .journal-flip-edge:disabled {
+  opacity: 0.16;
+  pointer-events: none;
+}
+.journal-spread.has-pages .journal-flip-edge:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--j-yellow);
+  translate: 0 calc(-50% - 2px);
+}
+
+@media (max-width: 900px) {
+  .travel-journal.is-journey-tab .journey-sticker-list.journal-paged {
+    max-height: 62vh;
+  }
+  .journal-flip-edge {
+    display: none;
   }
 }

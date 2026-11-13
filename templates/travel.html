@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="travel-journal{{ ' is-map-tab' if tab == 'map' }}">
+<div class="travel-journal{{ ' is-map-tab' if tab == 'map' }}{{ ' is-journey-tab' if tab == 'journey' }}">
   <header class="journal-topbar magazine-masthead">
     <div class="masthead-main">
       <span class="masthead-band" aria-hidden="true">VACATION SCRAPBOOK · VOL. {{ current_year }}</span>
@@ -75,16 +75,6 @@
             <span class="map-topbar-badge map-topbar-badge-blue">地图</span>
           </h2>
 
-          <button type="button" class="map-filter-toggle" id="map-filter-toggle"
-                  aria-expanded="false" aria-controls="map-filter-panel" title="展开更多筛选">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                 aria-hidden="true">
-              <path d="M3 5h18l-7 8v6l-4 2v-8z"></path>
-            </svg>
-            <span>筛选</span>
-            <span class="map-filter-caret" aria-hidden="true">▾</span>
-          </button>
-
           {% if amap_configured %}
           <div class="map-topbar-search">
             <input id="poi-search" class="map-search-input" type="search" autocomplete="off"
@@ -127,51 +117,6 @@
             </button>
           </div>
         </header>
-
-        <div class="map-filter-panel map-filter-pop" id="map-filter-panel"
-             aria-label="更多筛选">
-          <div class="place-side-filters" aria-label="列表筛选与排序">
-            <label class="place-side-filter">
-              <span>状态</span>
-              <select data-list-status-filter>
-                <option value="">全部状态</option>
-                <option value="want">未去</option>
-                <option value="visited">已去</option>
-              </select>
-            </label>
-            <label class="place-side-filter">
-              <span>星级</span>
-              <select data-list-rating-filter>
-                <option value="0">全部星级</option>
-                <option value="3">3 星以上</option>
-                <option value="4">4 星以上</option>
-                <option value="5">5 星</option>
-              </select>
-            </label>
-            <label class="place-side-filter">
-              <span>城市</span>
-              <select data-list-city-filter>
-                <option value="">全部城市</option>
-                {% for city in place_cities %}
-                <option value="{{ city }}">{{ city }}</option>
-                {% endfor %}
-              </select>
-            </label>
-            <label class="place-side-filter">
-              <span>排序</span>
-              <select data-list-sort>
-                <option value="manual">手动顺序</option>
-                <option value="rating">星级从高到低</option>
-                <option value="city">按城市</option>
-              </select>
-            </label>
-          </div>
-          <div class="map-filter-foot">
-            <button class="btn btn-tiny btn-ghost map-filter-reset" type="button"
-                    id="map-filter-reset">重置</button>
-            <span class="map-filter-count" id="map-visible-count"></span>
-          </div>
-        </div>
       </div>
 
       <div class="map-split">
@@ -186,31 +131,6 @@
             <div id="travel-map" class="travel-map" aria-label="高德旅游地图"></div>
             <div id="map-fallback" class="map-fallback" hidden></div>
             <button type="button" class="map-side-open" id="place-side-open" hidden>‹ 展开点位列表</button>
-          </div>
-          <p class="map-hint">圆点颜色代表分类，点击图钉查看点位详情。</p>
-
-          <div class="scrap-map-row" aria-label="手账小装饰">
-            <button type="button" class="scrap-pin scrap-pin-yellow" data-scrap-drag
-                    data-scrap-title="黄色图钉" data-scrap-tip="北京环球度假区 · 已去 · 娱乐">
-              <span class="scrap-pin-head" aria-hidden="true"></span>
-            </button>
-            <button type="button" class="scrap-sticker" data-scrap-focus=".map-shell"
-                    data-scrap-title="地图贴纸" data-scrap-tip="拖动地图查看所有点位，图钉颜色循环红、蓝、黄。">
-              地图
-            </button>
-            <button type="button" class="scrap-ticket" data-scrap-ticket
-                    data-scrap-title="门票" data-scrap-tip="环球影城 · 成人票 ¥638 · 2026-10-18">
-              门票
-            </button>
-            <button type="button" class="scrap-arrow scrap-arrow-blue" data-scrap-focus="#travel-content"
-                    data-scrap-title="点位清单" data-scrap-tip="点这里翻到右侧点位卡片。">↗</button>
-            <span class="scrap-icon" data-scrap-icon aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="12" r="8.5"></circle>
-                <circle cx="12" cy="12" r="2.4"></circle>
-                <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"></path>
-              </svg>
-            </span>
           </div>
         </div>
 
@@ -270,6 +190,21 @@
 <script>
 (function () {
   'use strict';
+
+  /* 吸顶工具栏：把实测高度写入 CSS 变量，保证主体正好占满剩余视口 */
+  var topbarWrap = document.querySelector('.travel-journal.is-map-tab .map-topbar-wrap');
+  function syncToolbarHeight() {
+    if (!topbarWrap) return;
+    document.documentElement.style.setProperty(
+      '--travel-toolbar-h', topbarWrap.offsetHeight + 'px'
+    );
+  }
+  syncToolbarHeight();
+  window.addEventListener('load', syncToolbarHeight);
+  window.addEventListener('resize', syncToolbarHeight);
+  if (window.ResizeObserver && topbarWrap) {
+    new ResizeObserver(syncToolbarHeight).observe(topbarWrap);
+  }
 
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
@@ -340,17 +275,6 @@
 
   window.__travelApplyFilters = applyFilters;
 
-  var mapFilterToggle = document.getElementById('map-filter-toggle');
-  var mapFilterPanel = document.getElementById('map-filter-panel');
-  if (mapFilterToggle && mapFilterPanel) {
-    mapFilterToggle.addEventListener('click', function () {
-      var open = mapFilterPanel.classList.toggle('is-open');
-      mapFilterToggle.classList.toggle('is-open', open);
-      mapFilterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      mapFilterToggle.title = open ? '收起筛选' : '展开筛选';
-    });
-  }
-
   var mapTypeAll = document.querySelector('[data-map-type-all]');
   function syncMapTypeAll() {
     if (!mapTypeAll) return;
@@ -401,10 +325,19 @@
     }
   });
 
-  document.getElementById('map-filter-reset')?.addEventListener('click', function () {
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('#map-filter-reset')) return;
     document.querySelectorAll('[data-filter-status], [data-filter-category]').forEach(function (input) {
       input.checked = true;
     });
+    document.querySelectorAll(
+      '[data-list-status-filter], [data-list-rating-filter], ' +
+      '[data-list-city-filter], [data-list-sort]'
+    ).forEach(function (select) {
+      select.selectedIndex = 0;
+    });
+    saveListView();
+    applyListSort();
     applyFilters();
     syncMapTypeAll();
   });

@@ -48,75 +48,15 @@
           <span class="journal-empty-number" aria-hidden="true">00</span>
           <span class="journal-empty-sticker" data-sticker="flower" data-color="#e63946"
                 data-size="2.6rem" aria-hidden="true"></span>
-          <p>这一年的照片还是空白，先贴一张车票或门票进来吧。</p>
+          <p>这一年的照片还是空白，下一次出发时拍几张贴上来吧。</p>
         </div>
         {% endif %}
-
-        <div class="scrap-sticker-row" aria-label="手账贴纸">
-          <button type="button" class="scrap-sticker scrap-sticker-guide" data-scrap-drag
-                  data-scrap-title="攻略贴纸"
-                  data-scrap-tip="{{ group.label }} 的 {{ group.count }} 篇旅程都收在这一页，点开卡片看详情。">攻略</button>
-          <button type="button" class="scrap-sticker scrap-sticker-photo"
-                  data-scrap-focus=".journal-photo-collage"
-                  data-scrap-title="照片贴纸"
-                  data-scrap-tip="这一页贴了 {{ group.photos|length }} 张照片，点击让拼贴闪一下。">照片</button>
-          <button type="button" class="scrap-sticker scrap-sticker-map"
-                  data-scrap-tip="想去的地方有 {{ group.want }} 个，去过的有 {{ group.visited }} 个。"
-                  data-scrap-title="地图贴纸">地图</button>
-          <button type="button" class="scrap-sticker scrap-sticker-star"
-                  data-scrap-tip="先收藏这一页，下次出发再翻出来。"
-                  data-scrap-title="收藏贴纸">收藏</button>
-          <span class="scrap-icon scrap-icon-camera" data-scrap-icon aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M4 8h3l2-2.5h6L17 8h3v11H4z"></path>
-              <circle cx="12" cy="13.2" r="3.2"></circle>
-            </svg>
-          </span>
-          <span class="scrap-icon scrap-icon-disc" data-scrap-icon aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="12" cy="12" r="8.5"></circle>
-              <circle cx="12" cy="12" r="2.4"></circle>
-              <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"></path>
-            </svg>
-          </span>
-        </div>
-
-        <div class="scrap-pin-row" aria-label="手账图钉">
-          <button type="button" class="scrap-pin scrap-pin-red" data-scrap-drag
-                  data-scrap-title="红色图钉"
-                  data-scrap-tip="{{ group.label }} · {{ group.count }} 篇游记，{{ group.photos|length }} 张照片">
-            <span class="scrap-pin-head" aria-hidden="true"></span>
-          </button>
-          <button type="button" class="scrap-pin scrap-pin-blue" data-scrap-drag
-                  data-scrap-title="蓝色图钉"
-                  data-scrap-tip="想去 {{ group.want }} 个点位，蓝色图钉先钉在这里。">
-            <span class="scrap-pin-head" aria-hidden="true"></span>
-          </button>
-          <button type="button" class="scrap-pin scrap-pin-yellow" data-scrap-drag
-                  data-scrap-title="黄色图钉"
-                  data-scrap-tip="已去过 {{ group.visited }} 个点位，黄色图钉做个小记号。">
-            <span class="scrap-pin-head" aria-hidden="true"></span>
-          </button>
-        </div>
 
         <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach">
           <span class="journal-note-tape sw-washi sw-washi-yellow" aria-hidden="true"></span>
           <strong>{{ group.label }} 小结</strong>
           <p>{{ group.count }} 篇游记 · 已去过 {{ group.visited }} · 想去 {{ group.want }}</p>
           <p>这一年花了 <b>¥{{ group.cost }}</b></p>
-        </div>
-
-        <div class="scrap-ticket-row" aria-label="旅行票根">
-          <button type="button" class="scrap-ticket scrap-ticket-red" data-scrap-ticket
-                  data-scrap-title="门票"
-                  data-scrap-tip="{% if group.journeys %}{{ group.journeys[0].title }} · {{ group.journeys[0].date_label or '未填写日期' }}{% else %}{{ group.label }} · 留作纪念的门票{% endif %}">
-            门票
-          </button>
-          <button type="button" class="scrap-ticket scrap-ticket-blue" data-scrap-ticket
-                  data-scrap-title="车票"
-                  data-scrap-tip="{% if group.journeys %}去往 {{ group.journeys[0].title }} 的车票 · ¥{{ group.journeys[0].total_cost }}{% else %}{{ group.label }} · 下一站的车票{% endif %}">
-            车票
-          </button>
         </div>
 
         {% if group.journeys %}
@@ -207,9 +147,29 @@
                   data-scrap-tip="点一下，翻到第一张旅程卡片。">↗</button>
           <span>翻到第一张卡片</span>
         </div>
+        <div class="journal-pager" data-journal-pager aria-label="旅程卡片翻页" hidden>
+          <button type="button" class="journal-pager-btn" data-journal-page-prev
+                  aria-label="上一页">‹</button>
+          <span class="journal-pager-count">
+            <b data-journal-page-now>1</b>
+            <span aria-hidden="true">/</span>
+            <span data-journal-page-total>1</span>
+          </span>
+          <button type="button" class="journal-pager-btn" data-journal-page-next
+                  aria-label="下一页">›</button>
+        </div>
         {% endif %}
       </div>
     </div>
+
+    {% if group.journeys %}
+    <div class="journal-flip-edges" data-journal-flip-edges hidden>
+      <button type="button" class="journal-flip-edge is-prev" data-journal-page-prev
+              aria-label="上一页">‹</button>
+      <button type="button" class="journal-flip-edge is-next" data-journal-page-next
+              aria-label="下一页">›</button>
+    </div>
+    {% endif %}
 
     <span class="journal-binding" aria-hidden="true">
       {% for _ in range(20) %}<i></i>{% endfor %}

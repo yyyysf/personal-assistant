@@ -127,12 +127,169 @@
       target.classList.add('is-entering');
     }
     observeReveals(target);
+    setupJourneyPager(target);
     refreshScrawl();
   }
 
   function initSpreads() {
     if (!rootEl()) return;
     activateYear(preferredYear(), false);
+  }
+
+  /* ---------- 右页旅程卡片：一屏之内翻页 ---------- */
+  var pagerResizeTimer = null;
+  var PAGER_TOP_ROOM = 12;
+
+  function journeyList(spread) {
+    return qs('.journey-sticker-list', spread);
+  }
+
+  function pagerStarts(spread) {
+    var raw = spread.dataset.journalPageStarts;
+    if (!raw) return [];
+    return raw.split(',').map(function (value) { return Number(value) || 0; });
+  }
+
+  function pageForTarget(target) {
+    var track = target.closest ? target.closest('.journal-pager-track') : null;
+    if (!track) return null;
+    var spread = track.closest('[data-journal-spread]');
+    var starts = spread ? pagerStarts(spread) : [];
+    if (starts.length < 2) return null;
+    var offset = target.offsetTop;
+    var page = 0;
+    for (var i = 0; i < starts.length; i += 1) {
+      if (offset >= starts[i] - 1) page = i;
+    }
+    return { spread: spread, page: page };
+  }
+
+  function resetPager(spread) {
+    var list = journeyList(spread);
+    if (!list) return;
+    var track = qs('.journal-pager-track', list);
+    if (track) {
+      qsa('.journey-sticker', track).forEach(function (card) {
+        list.appendChild(card);
+      });
+      track.parentNode.removeChild(track);
+    }
+    list.classList.remove('journal-paged');
+    delete spread.dataset.journalPageStarts;
+    delete spread.dataset.journalPage;
+    spread.classList.remove('has-pages');
+  }
+
+  function applyPager(spread, starts, index) {
+    var list = journeyList(spread);
+    var track = list ? qs('.journal-pager-track', list) : null;
+    if (!track || !starts.length) return;
+    var total = starts.length;
+    var page = Math.max(0, Math.min(index, total - 1));
+    track.style.transform = 'translateY(' + (PAGER_TOP_ROOM - starts[page]) + 'px)';
+    spread.dataset.journalPage = String(page);
+    spread.classList.toggle('has-pages', total > 1);
+
+    var pager = qs('[data-journal-pager]', spread);
+    if (pager) pager.hidden = total <= 1;
+    var edges = qs('[data-journal-flip-edges]', spread);
+    if (edges) edges.hidden = total <= 1;
+    var now = qs('[data-journal-page-now]', spread);
+    var totalEl = qs('[data-journal-page-total]', spread);
+    if (now) now.textContent = String(page + 1);
+    if (totalEl) totalEl.textContent = String(total);
+    qsa('[data-journal-page-prev]', spread).forEach(function (btn) {
+      btn.disabled = page <= 0;
+    });
+    qsa('[data-journal-page-next]', spread).forEach(function (btn) {
+      btn.disabled = page >= total - 1;
+    });
+  }
+
+  function flipJourneyPage(spread, delta) {
+    if (!spread) return;
+    var starts = pagerStarts(spread);
+    if (starts.length < 2) return;
+    var current = parseInt(spread.dataset.journalPage || '0', 10) || 0;
+    var next = current + delta;
+    if (next < 0 || next >= starts.length) return;
+    applyPager(spread, starts, next);
+  }
+
+  function setupJourneyPager(spread) {
+    if (!spread) return;
+    var list = journeyList(spread);
+    if (!list) return;
+    var previous = parseInt(spread.dataset.journalPage || '0', 10) || 0;
+    resetPager(spread);
+    if (spread.hidden) return;
+    var cards = qsa('.journey-sticker', list);
+    if (!cards.length) return;
+
+    var track = document.createElement('div');
+    track.className = 'journal-pager-track';
+    var listStyle = window.getComputedStyle(list);
+    if (listStyle.gap && listStyle.gap !== 'normal') {
+      track.style.gap = listStyle.gap;
+    }
+    cards.forEach(function (card) {
+      card.classList.add('is-visible');
+      track.appendChild(card);
+    });
+    list.appendChild(track);
+    list.classList.add('journal-paged');
+
+    /* 翻页条先占位，量出的高度才是分页后的真实可视高度 */
+    var pager = qs('[data-journal-pager]', spread);
+    if (pager) pager.hidden = false;
+
+    var pageHeight = list.clientHeight -
+      (parseFloat(listStyle.paddingTop) || 0) -
+      (parseFloat(listStyle.paddingBottom) || 0);
+    var available = pageHeight - PAGER_TOP_ROOM;
+    var starts = [0];
+    var pageFirstCards = [cards[0]];
+    if (available > 24) {
+      var pageTop = 0;
+      cards.forEach(function (card, i) {
+        if (i === 0) return;
+        var bottom = card.offsetTop + card.offsetHeight;
+        if (bottom - pageTop > available + 1) {
+          pageTop = card.offsetTop;
+          starts.push(pageTop);
+          pageFirstCards.push(card);
+        }
+      });
+    }
+
+    /* 每页末尾补齐留白：翻页后下一页不会从页脚探出半张卡片 */
+    if (starts.length > 1) {
+      var shift = 0;
+      for (var p = 1; p < starts.length; p += 1) {
+        var natural = starts[p] + shift;
+        var gap = pageHeight - (natural - starts[p - 1]);
+        if (gap > 0) {
+          var spacer = document.createElement('div');
+          spacer.className = 'journal-pager-spacer';
+          spacer.style.height = gap + 'px';
+          spacer.setAttribute('aria-hidden', 'true');
+          track.insertBefore(spacer, pageFirstCards[p]);
+          shift += gap;
+          starts[p] = natural + gap;
+        } else {
+          starts[p] = natural;
+        }
+      }
+    }
+    spread.dataset.journalPageStarts = starts.join(',');
+    applyPager(spread, starts, previous);
+  }
+
+  function refreshActivePager() {
+    var root = rootEl();
+    if (!root) return;
+    var active = qs('.journal-spread.is-active', root);
+    if (active) setupJourneyPager(active);
   }
 
   /* ---------- 旅程手记卡片（单张纸页，不做书本翻页） ---------- */
@@ -256,10 +413,15 @@
     target.classList.remove('is-scrap-flash');
     void target.offsetWidth;
     target.classList.add('is-scrap-flash');
-    try {
-      target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
-    } catch (err) {
-      target.scrollIntoView();
+    var paged = pageForTarget(target);
+    if (paged) {
+      applyPager(paged.spread, pagerStarts(paged.spread), paged.page);
+    } else {
+      try {
+        target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+      } catch (err) {
+        target.scrollIntoView();
+      }
     }
     window.setTimeout(function () { target.classList.remove('is-scrap-flash'); }, 1500);
   }
@@ -348,6 +510,15 @@
       setNavOpen(false);
       return;
     }
+    var pageBtn = event.target.closest('[data-journal-page-prev], [data-journal-page-next]');
+    if (pageBtn) {
+      var spread = pageBtn.closest('[data-journal-spread]');
+      if (spread) {
+        event.preventDefault();
+        flipJourneyPage(spread, pageBtn.hasAttribute('data-journal-page-prev') ? -1 : 1);
+      }
+      return;
+    }
     var yearTab = event.target.closest('[data-journal-year]');
     if (yearTab) {
       event.preventDefault();
@@ -367,6 +538,23 @@
     if (event.key === 'Escape' && document.body.classList.contains('nav-open')) {
       setNavOpen(false);
     }
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    var target = event.target;
+    if (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]')) {
+      return;
+    }
+    var activeSpread = qs('#journey-list .journal-spread.is-active');
+    if (!activeSpread || !activeSpread.classList.contains('has-pages')) return;
+    flipJourneyPage(activeSpread, event.key === 'ArrowRight' ? 1 : -1);
+  });
+
+  window.addEventListener('load', function () {
+    refreshActivePager();
+  });
+
+  window.addEventListener('resize', function () {
+    if (pagerResizeTimer) window.clearTimeout(pagerResizeTimer);
+    pagerResizeTimer = window.setTimeout(refreshActivePager, 180);
   });
 
   /* 书本弹窗关闭时先合上，再关闭对话框 */
