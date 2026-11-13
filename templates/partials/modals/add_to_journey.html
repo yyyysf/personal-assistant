@@ -5,7 +5,7 @@
   </header>
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
-  <form class="stack-form" hx-post="/travel/places/{{ place.id }}/journeys"
+  <form class="stack-form journal-form" hx-post="/travel/places/{{ place.id }}/journeys"
         hx-target="#modal-body" hx-swap="innerHTML">
     {% if journeys %}
     <label class="field">

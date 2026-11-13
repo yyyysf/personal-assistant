@@ -721,3 +721,35 @@
   .journey-gallery-item img { height: 200px; }
   .form-section { padding: 12px; }
 }
+
+/* 旅游模块 · 点位详情页字号统一（仅作用于 .travel-place-page） */
+.travel-place-page .page-actions-copy p,
+.travel-place-page .detail-grid,
+.travel-place-page .detail-grid dt,
+.travel-place-page .detail-grid dd,
+.travel-place-page .panel p,
+.travel-place-page .point-status-badge,
+.travel-place-page .tag,
+.travel-place-page .status-select,
+.travel-place-page .btn {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.travel-place-page .form-section-title { font-size: 16px; line-height: 1.4; }
+.travel-place-page .muted-sm { font-size: 13px; line-height: 1.6; }
+
+/* 旅游模块表单（新增/编辑旅程、点位）字号统一 */
+.journal-form .form-section-title { font-size: 16px; line-height: 1.4; }
+.journal-form .field > span,
+.journal-form .mood-chip-option span,
+.journal-form .journey-place-name,
+.journal-form input,
+.journal-form select,
+.journal-form textarea,
+.journal-form .btn {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.journal-form .muted-sm { font-size: 13px; line-height: 1.6; }
+.journal-form input::placeholder,
+.journal-form textarea::placeholder { font-size: 14px; opacity: 1; }

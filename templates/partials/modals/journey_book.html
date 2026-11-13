@@ -1,0 +1,120 @@
+{% set rating = namespace(total=0, count=0) %}
+{% for item in journey_places %}
+{% if item.place.rating %}
+{% set rating.total = rating.total + item.place.rating %}
+{% set rating.count = rating.count + 1 %}
+{% endif %}
+{% endfor %}
+{% set avg_rating = (rating.total / rating.count) if rating.count else 0 %}
+{% set photo_tilts = ['-2.4', '1.8', '-1.1', '2.2', '-1.6', '1.2'] %}
+
+<div class="journey-book note-card" data-journey-book>
+  <span class="note-card-tape" aria-hidden="true"></span>
+  <button type="button" class="note-card-close" data-modal-close aria-label="关闭旅程手记">✕</button>
+
+  <header class="note-card-head">
+    <span class="note-card-kicker">{{ year_label }} · TRAVEL NOTES</span>
+    <h2 class="note-card-title">{{ journey.title }}</h2>
+    <p class="note-card-date">
+      {% if journey.start_date and journey.end_date %}
+      {{ journey.start_date.strftime('%Y-%m-%d') }} 至 {{ journey.end_date.strftime('%Y-%m-%d') }}
+      {% else %}
+      {{ journey.date_label or '未填写日期' }}
+      {% endif %}
+    </p>
+    <div class="note-card-chips">
+      <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
+      <span class="mood-chip" data-mood="{{ journey.mood }}"
+            style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
+    </div>
+  </header>
+
+  <div class="note-card-body">
+    <section class="note-card-photos" aria-label="旅程照片">
+      {% if journey.photo_list %}
+      <div class="note-photo-collage">
+        {% for photo in journey.photo_list %}
+        <figure class="note-photo" style="--tilt:{{ photo_tilts[loop.index0 % 6] }}deg">
+          <a href="{{ photo }}" target="_blank" rel="noopener">
+            <img src="{{ photo }}" alt="旅程照片 {{ loop.index }}" loading="lazy">
+          </a>
+        </figure>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="note-empty-photo">这一页还没有照片，下次记得把沿途的风景贴进来。</p>
+      {% endif %}
+    </section>
+
+    <section class="note-card-info" aria-label="行程信息">
+      <dl class="note-facts">
+        <div><dt>日期</dt><dd>{{ journey.date_label or '—' }}</dd></div>
+        <div><dt>状态</dt><dd>{{ journey.status_label }}</dd></div>
+        <div><dt>心情</dt><dd>{{ journey.mood_label }}</dd></div>
+        <div><dt>关联点位</dt><dd>{{ journey_places|length }} 个</dd></div>
+        <div><dt>评分</dt>
+          <dd>
+            {% if rating.count %}
+            <span class="note-stars" aria-label="{{ avg_rating|round(1) }} 分">{{ '★' * (avg_rating|round(0, 'floor')|int) }}</span>
+            {{ avg_rating|round(1) }}
+            {% else %}—{% endif %}
+          </dd>
+        </div>
+      </dl>
+
+      <section class="note-block">
+        <h3><span class="note-tape-label">花费明细</span></h3>
+        <dl class="note-cost">
+          <div><dt>路费</dt><dd>¥{{ journey.cost_transport }}</dd></div>
+          <div><dt>住宿费</dt><dd>¥{{ journey.cost_lodging }}</dd></div>
+          <div><dt>伙食费</dt><dd>¥{{ journey.cost_food }}</dd></div>
+          <div><dt>其他</dt><dd>¥{{ journey.cost_other }}</dd></div>
+          <div class="note-cost-total"><dt>合计</dt><dd>¥{{ journey.total_cost }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="note-block">
+        <h3><span class="note-tape-label note-tape-label-blue">点位清单</span></h3>
+        {% if journey_places %}
+        <div class="note-place-list">
+          {% for item in journey_places %}
+          <div class="note-place">
+            <span class="note-place-head">
+              <i class="note-place-dot" aria-hidden="true"></i>
+              <strong>{{ item.place.name }}</strong>
+              {% if item.place.rating %}
+              <span class="note-place-stars" aria-label="{{ item.place.rating }} 星">{{ '★' * item.place.rating }}</span>
+              {% endif %}
+            </span>
+            <span class="note-place-meta">
+              {% if item.place.point_category %}<span class="note-tag">{{ item.place.point_category }}</span>{% endif %}
+              <span class="note-tag">{{ item.place.status_label }}</span>
+            </span>
+            {% if item.note %}<p class="note-place-note">本次：{{ item.note }}</p>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="note-empty-place">这趟旅程还没有关联点位。</p>
+        {% endif %}
+      </section>
+    </section>
+  </div>
+
+  <footer class="note-card-foot">
+    <article class="note-sticky">
+      <span class="note-sticky-tape" aria-hidden="true"></span>
+      <strong>旅行手记</strong>
+      {% if journey.description %}
+      <p>{{ journey.description }}</p>
+      {% else %}
+      <p>这趟旅程还没有写下手记。</p>
+      {% endif %}
+    </article>
+    <div class="note-card-tags">
+      <span>¥{{ journey.total_cost }}</span>
+      <span>{{ journey_places|length }} 个点位</span>
+      <span>{{ year_label }}</span>
+    </div>
+  </footer>
+</div>

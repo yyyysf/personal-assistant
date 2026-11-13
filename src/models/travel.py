@@ -21,12 +21,12 @@ POINT_STATUS_LABELS = {"want": "想去", "visited": "已去"}
 POINT_STATUS_COLORS = {"want": "#FFC8DD", "visited": "#BDE0FE"}
 POINT_CATEGORIES = ("景点", "美食", "住宿", "交通", "商场", "娱乐")
 POINT_CATEGORY_COLORS = {
-    "景点": "#6FBF9A",
-    "美食": "#FF9868",
-    "住宿": "#A98BF2",
-    "交通": "#5FA8F5",
-    "商场": "#F5C242",
-    "娱乐": "#F07CB0",
+    "景点": "#2a9d8f",
+    "美食": "#e76f51",
+    "住宿": "#9b5de5",
+    "交通": "#457b9d",
+    "商场": "#ffd166",
+    "娱乐": "#e63946",
 }
 POINT_CATEGORY_DEFAULT_COLOR = "#B8BDC6"
 CANDIDATE_STATUS_LABELS = {"pending": "待确认", "imported": "已入库", "ignored": "已忽略"}
@@ -136,6 +136,8 @@ class Journey(Base, TimestampMixin):
     cost_lodging: Mapped[int] = mapped_column(Integer, default=0)
     cost_food: Mapped[int] = mapped_column(Integer, default=0)
     cost_other: Mapped[int] = mapped_column(Integer, default=0)
+    # 旧库沿用下来的非空列；模型保留映射，避免新旅程插入时触发 NOT NULL 约束。
+    tags: Mapped[str] = mapped_column(String(200), default="")
     photos: Mapped[str] = mapped_column(Text, default="[]")
 
     @property

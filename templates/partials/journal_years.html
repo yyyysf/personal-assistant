@@ -1,0 +1,14 @@
+{% set active_key = journey_years[0].key if journey_years else current_year|string %}
+<nav class="journal-year-tabs" id="journal-years" role="tablist" aria-label="旅行手账年份">
+  {% for group in journey_years|reverse %}
+  {% if not loop.first %}<span class="journal-year-sep" aria-hidden="true">｜</span>{% endif %}
+  <button type="button" role="tab" class="journal-year-tab{{ ' is-active' if group.key == active_key }}"
+          aria-selected="{{ 'true' if group.key == active_key else 'false' }}"
+          data-journal-year="{{ group.key }}">
+    {{ group.year if group.year is not none else '未编年' }}
+  </button>
+  {% else %}
+  <button type="button" role="tab" class="journal-year-tab is-active"
+          aria-selected="true" data-journal-year="{{ current_year }}">{{ current_year }}</button>
+  {% endfor %}
+</nav>

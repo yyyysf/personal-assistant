@@ -207,7 +207,7 @@ def test_place_status_and_rating_quick_actions(client):
         place = db.get(Place, place_id)
         assert place.rating == 4
         assert place.point_status == "visited"
-        assert place.marker_color == "#6FBF9A"
+        assert place.marker_color == "#2a9d8f"
 
     capped = client.post(f"/travel/places/{place_id}/rating", data={"rating": "9"})
     assert json.loads(capped.headers["HX-Trigger"])["placeSaved"]["rating"] == 5
@@ -378,6 +378,8 @@ def test_journey_create_list_detail_and_stats(client):
     assert "开心" in page.text
     assert "¥4300" in page.text
     assert "清水寺" not in page.text
+    assert 'data-journal-year="2026"' in page.text
+    assert f'data-journey-book-url="/travel/journeys/{journey_id}/book"' in page.text
 
     listing = client.get("/travel/journeys/list")
     assert listing.status_code == 200
@@ -389,6 +391,12 @@ def test_journey_create_list_detail_and_stats(client):
     assert "排队 40 分钟" in detail.text
     assert "路费" in detail.text
     assert "¥4300" in detail.text
+
+    book = client.get(f"/travel/journeys/{journey_id}/book")
+    assert book.status_code == 200
+    assert "清水寺" in book.text
+    assert "排队 40 分钟" in book.text
+    assert "¥4300" in book.text
 
     stats = client.get("/api/v1/dashboard/stats").json()["data"]
     assert stats["travel"]["stats"]["journeys"] == 1

@@ -1,34 +1,267 @@
-<div id="journey-list" class="journey-grid"
-     data-refresh-url="/travel/journeys/list{% if journey_status %}?status={{ journey_status }}{% endif %}">
-  {% for journey in journeys %}
-  <article class="journey-card" data-nav-url="/travel/journeys/{{ journey.id }}">
-    <div class="journey-cover" style="--cover-tint:{{ journey.mood_color }}">
-      {% if journey.photo_list %}
-      <img src="{{ journey.photo_list[0] }}" alt="{{ journey.title }}" loading="lazy">
-      {% else %}
-      <span class="journey-cover-placeholder">{{ journey.mood_label }}</span>
-      {% endif %}
-      <span class="mood-chip" style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
-    </div>
-    <div class="journey-card-body">
-      <h3>{{ journey.title }}</h3>
-      <p class="row-meta">{{ journey.date_label or '未填写日期' }}</p>
-      <div class="journey-card-foot">
-        <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
-        <span class="journey-cost">合计 ¥{{ journey.total_cost }}</span>
+{% set active_key = journey_years[0].key if journey_years else current_year|string %}
+<div id="journey-list" class="journal-bookcase"
+     data-refresh-url="/travel/journeys/list{% if journey_status %}?status={{ journey_status }}{% endif %}"
+     data-journal-default-year="{{ active_key }}">
+  {% set polaroid_tilts = ['-3', '2.4', '-2.2', '3', '-2.6', '2'] %}
+  {% set sticker_tilts = ['-1.4', '1.1', '-0.8', '1.4', '-1.1', '0.8'] %}
+  {% set tape_colors = ['pink', 'blue', 'mint', 'yellow', 'purple'] %}
+  {% set spark_names = ['star', 'heart', 'flower', 'sparkles'] %}
+  {% set spark_colors = ['#e63946', '#ffdd33', '#1d3557', '#e63946'] %}
+
+  {% for group in journey_years %}
+  {% set year_label = group.year if group.year is not none else group.label %}
+  <section class="journal-spread magazine-spread{{ ' is-active' if group.key == active_key }}"
+           data-journal-spread="{{ group.key }}"
+           {% if group.key != active_key %}hidden{% endif %}>
+    <div class="journal-page journal-page-left">
+      <div class="journal-page-inner">
+        <header class="journal-page-head mag-page-head">
+          <span class="mag-kicker">TRAVEL FRAGMENTS · {{ group.label }}</span>
+          <h2 class="mag-poster-title">
+            <span class="mag-poster-year">{{ year_label }}</span>
+            <span class="mag-poster-cn">旅行碎片</span>
+          </h2>
+          <p class="mag-deck">{{ group.count }} 篇游记 · {{ group.photos|length }} 张照片贴在这一页</p>
+        </header>
+
+        {% if group.photos %}
+        <div class="journal-photo-collage magazine-collage">
+          <span class="collage-block collage-block-red" aria-hidden="true"></span>
+          <span class="collage-block collage-block-blue" aria-hidden="true"></span>
+          <span class="collage-dots" aria-hidden="true"></span>
+          <span class="collage-stripes" aria-hidden="true"></span>
+          <span class="collage-big-number" aria-hidden="true">{{ group.photos|length }}</span>
+          <span class="collage-arrow" aria-hidden="true">↗</span>
+          {% for photo in group.photos[:6] %}
+          <figure class="journal-polaroid{{ ' is-hero' if loop.first }}"
+                  style="--tilt:{{ polaroid_tilts[loop.index0 % 6] }}deg">
+            <span class="journal-pin" aria-hidden="true"></span>
+            <span class="journal-photo-tape" aria-hidden="true"></span>
+            <span class="journal-photo-badge" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+            <img src="{{ photo.src }}" alt="{{ photo.title }}" loading="lazy">
+            <figcaption>{{ photo.title }}</figcaption>
+          </figure>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="journal-empty-photos">
+          <span class="journal-empty-number" aria-hidden="true">00</span>
+          <span class="journal-empty-sticker" data-sticker="flower" data-color="#e63946"
+                data-size="2.6rem" aria-hidden="true"></span>
+          <p>这一年的照片还是空白，先贴一张车票或门票进来吧。</p>
+        </div>
+        {% endif %}
+
+        <div class="scrap-sticker-row" aria-label="手账贴纸">
+          <button type="button" class="scrap-sticker scrap-sticker-guide" data-scrap-drag
+                  data-scrap-title="攻略贴纸"
+                  data-scrap-tip="{{ group.label }} 的 {{ group.count }} 篇旅程都收在这一页，点开卡片看详情。">攻略</button>
+          <button type="button" class="scrap-sticker scrap-sticker-photo"
+                  data-scrap-focus=".journal-photo-collage"
+                  data-scrap-title="照片贴纸"
+                  data-scrap-tip="这一页贴了 {{ group.photos|length }} 张照片，点击让拼贴闪一下。">照片</button>
+          <button type="button" class="scrap-sticker scrap-sticker-map"
+                  data-scrap-tip="想去的地方有 {{ group.want }} 个，去过的有 {{ group.visited }} 个。"
+                  data-scrap-title="地图贴纸">地图</button>
+          <button type="button" class="scrap-sticker scrap-sticker-star"
+                  data-scrap-tip="先收藏这一页，下次出发再翻出来。"
+                  data-scrap-title="收藏贴纸">收藏</button>
+          <span class="scrap-icon scrap-icon-camera" data-scrap-icon aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 8h3l2-2.5h6L17 8h3v11H4z"></path>
+              <circle cx="12" cy="13.2" r="3.2"></circle>
+            </svg>
+          </span>
+          <span class="scrap-icon scrap-icon-disc" data-scrap-icon aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="8.5"></circle>
+              <circle cx="12" cy="12" r="2.4"></circle>
+              <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"></path>
+            </svg>
+          </span>
+        </div>
+
+        <div class="scrap-pin-row" aria-label="手账图钉">
+          <button type="button" class="scrap-pin scrap-pin-red" data-scrap-drag
+                  data-scrap-title="红色图钉"
+                  data-scrap-tip="{{ group.label }} · {{ group.count }} 篇游记，{{ group.photos|length }} 张照片">
+            <span class="scrap-pin-head" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="scrap-pin scrap-pin-blue" data-scrap-drag
+                  data-scrap-title="蓝色图钉"
+                  data-scrap-tip="想去 {{ group.want }} 个点位，蓝色图钉先钉在这里。">
+            <span class="scrap-pin-head" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="scrap-pin scrap-pin-yellow" data-scrap-drag
+                  data-scrap-title="黄色图钉"
+                  data-scrap-tip="已去过 {{ group.visited }} 个点位，黄色图钉做个小记号。">
+            <span class="scrap-pin-head" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach">
+          <span class="journal-note-tape sw-washi sw-washi-yellow" aria-hidden="true"></span>
+          <strong>{{ group.label }} 小结</strong>
+          <p>{{ group.count }} 篇游记 · 已去过 {{ group.visited }} · 想去 {{ group.want }}</p>
+          <p>这一年花了 <b>¥{{ group.cost }}</b></p>
+        </div>
+
+        <div class="scrap-ticket-row" aria-label="旅行票根">
+          <button type="button" class="scrap-ticket scrap-ticket-red" data-scrap-ticket
+                  data-scrap-title="门票"
+                  data-scrap-tip="{% if group.journeys %}{{ group.journeys[0].title }} · {{ group.journeys[0].date_label or '未填写日期' }}{% else %}{{ group.label }} · 留作纪念的门票{% endif %}">
+            门票
+          </button>
+          <button type="button" class="scrap-ticket scrap-ticket-blue" data-scrap-ticket
+                  data-scrap-title="车票"
+                  data-scrap-tip="{% if group.journeys %}去往 {{ group.journeys[0].title }} 的车票 · ¥{{ group.journeys[0].total_cost }}{% else %}{{ group.label }} · 下一站的车票{% endif %}">
+            车票
+          </button>
+        </div>
+
+        {% if group.journeys %}
+        <ul class="journal-fragments" aria-label="{{ group.label }} 的旅行碎片">
+          {% for journey in group.journeys[:6] %}
+          <li>
+            <button type="button" class="journal-fragment"
+                    data-journey-book-url="/travel/journeys/{{ journey.id }}/book"
+                    data-journey-title="{{ journey.title }}">
+              <span class="journal-fragment-index" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+              <span class="journal-fragment-dot" data-mood="{{ journey.mood }}"
+                    style="--dot:{{ journey.mood_color }}"></span>
+              <span class="journal-fragment-title">{{ journey.title }}</span>
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </div>
     </div>
-    <div class="hover-actions">
-      <button class="icon-btn" type="button" title="编辑旅程"
-              data-modal-url="/travel/journeys/{{ journey.id }}/edit" data-modal-title="编辑旅程">✎</button>
-      <button class="icon-btn" type="button" title="删除旅程"
-              hx-post="/travel/journeys/{{ journey.id }}/delete" hx-swap="none"
-              hx-confirm="删除旅程「{{ journey.title }}」？关联点位会保留，图片将一并删除。">✕</button>
+
+    <div class="journal-page journal-page-right">
+      <div class="journal-page-inner">
+        <header class="journal-page-head mag-page-head mag-page-head-right">
+          <span class="mag-kicker">JOURNEY LIST · {{ group.count }} STORIES</span>
+          <h2 class="mag-poster-title mag-poster-blue">旅程清单</h2>
+          <p class="mag-deck">{{ group.count }} 篇旅程 · 点击卡片翻开。</p>
+        </header>
+
+        <div class="journey-sticker-list magazine-cards">
+          {% for journey in group.journeys %}
+          <article class="journey-sticker magazine-card" id="journey-card-{{ journey.id }}"
+                   style="--i:{{ loop.index0 }}; --tilt:{{ sticker_tilts[loop.index0 % 6] }}deg">
+            <span class="sw-washi sw-washi-{{ tape_colors[loop.index0 % 5] }} journey-sticker-tape"
+                  aria-hidden="true"></span>
+            <button type="button" class="journey-card-index scrap-number"
+                    aria-label="翻到第 {{ loop.index }} 张卡片"
+                    data-scrap-focus="#journey-card-{{ journey.id }}"
+                    data-scrap-title="编号 {{ '%02d'|format(loop.index) }}">{{ '%02d'|format(loop.index) }}</button>
+            <button type="button" class="journey-sticker-open"
+                    data-journey-book-url="/travel/journeys/{{ journey.id }}/book"
+                    data-journey-title="{{ journey.title }}">
+              <span class="journey-sticker-photo" style="--photo-tint:{{ journey.mood_color }}">
+                {% if journey.photo_list %}
+                <img src="{{ journey.photo_list[0] }}" alt="{{ journey.title }}" loading="lazy">
+                {% else %}
+                <span class="journey-sticker-initial">{{ journey.title[:1] }}</span>
+                {% endif %}
+                <span class="journey-photo-label" aria-hidden="true">PHOTO</span>
+              </span>
+              <span class="journey-sticker-copy">
+                <span class="journey-sticker-top">
+                  <strong class="journey-sticker-title">{{ journey.title }}</strong>
+                  <span class="point-status-badge point-status-{{ journey.status }}">{{ journey.status_label }}</span>
+                </span>
+                <span class="journey-sticker-date">{{ journey.date_label or '未填写日期' }}</span>
+                {% if journey.description %}
+                <span class="journey-sticker-desc">{{ journey.description[:72] }}{% if journey.description|length > 72 %}…{% endif %}</span>
+                {% endif %}
+                <span class="journey-sticker-foot">
+                  <span class="mood-chip" data-mood="{{ journey.mood }}"
+                        style="--mood:{{ journey.mood_color }}">{{ journey.mood_label }}</span>
+                  <span class="journey-sticker-cost"><span>¥{{ journey.total_cost }}</span></span>
+                </span>
+              </span>
+            </button>
+            <div class="journey-sticker-actions">
+              <button class="icon-btn" type="button" title="编辑旅程"
+                      data-modal-url="/travel/journeys/{{ journey.id }}/edit"
+                      data-modal-title="编辑旅程">✎</button>
+              <button class="icon-btn" type="button" title="删除旅程"
+                      hx-post="/travel/journeys/{{ journey.id }}/delete" hx-swap="none"
+                      hx-confirm="删除旅程「{{ journey.title }}」？关联点位会保留，图片将一并删除。">✕</button>
+            </div>
+            <span class="journey-sticker-spark" aria-hidden="true"
+                  data-sticker="{{ spark_names[loop.index0 % 4] }}"
+                  data-color="{{ spark_colors[loop.index0 % 4] }}"
+                  data-size="2.2rem"></span>
+          </article>
+          {% endfor %}
+        </div>
+
+        {% if group.journeys %}
+        <div class="scrap-jump-row">
+          <button type="button" class="scrap-arrow scrap-arrow-red"
+                  data-scrap-focus="#journey-card-{{ group.journeys[0].id }}"
+                  data-scrap-title="箭头贴纸"
+                  data-scrap-tip="点一下，翻到第一张旅程卡片。">↗</button>
+          <span>翻到第一张卡片</span>
+        </div>
+        {% endif %}
+      </div>
     </div>
-  </article>
+
+    <span class="journal-binding" aria-hidden="true">
+      {% for _ in range(20) %}<i></i>{% endfor %}
+    </span>
+  </section>
   {% else %}
-  <div class="empty-panel journey-empty">
-    <p>还没有旅程游记。点击右上角「+ 新增旅程」，把一趟旅行完整记录下来。</p>
-  </div>
+  <section class="journal-spread magazine-spread is-active" data-journal-spread="{{ current_year }}">
+    <div class="journal-page journal-page-left">
+      <div class="journal-page-inner">
+        <header class="journal-page-head mag-page-head">
+          <span class="mag-kicker">TRAVEL FRAGMENTS · {{ current_year }}</span>
+          <h2 class="mag-poster-title">
+            <span class="mag-poster-year">{{ current_year }}</span>
+            <span class="mag-poster-cn">旅行碎片</span>
+          </h2>
+          <p class="mag-deck">空白的纸面，正等着第一张照片。</p>
+        </header>
+        <div class="journal-empty-photos">
+          <span class="journal-empty-number" aria-hidden="true">00</span>
+          <span class="journal-empty-sticker" data-sticker="flower" data-color="#e63946"
+                data-size="3rem" aria-hidden="true"></span>
+          <p>还没有照片。下一次出发时，记得把风景贴在这里。</p>
+        </div>
+        <div class="journal-sticky-note sw-sticky sw-sticky-lined sw-sticky-peach">
+          <span class="journal-note-tape sw-washi sw-washi-yellow" aria-hidden="true"></span>
+          <strong>{{ current_year }} 年小结</strong>
+          <p>0 篇游记 · 空白的一页</p>
+        </div>
+      </div>
+    </div>
+    <div class="journal-page journal-page-right">
+      <div class="journal-page-inner">
+        <header class="journal-page-head mag-page-head mag-page-head-right">
+          <span class="mag-kicker">JOURNEY LIST · 0 STORIES</span>
+          <h2 class="mag-poster-title mag-poster-blue">旅程清单</h2>
+          <p class="mag-deck">还没有游记，写下第一趟旅行就会装订在这一页。</p>
+        </header>
+        <div class="journal-empty-journeys">
+          <span class="journal-empty-number" aria-hidden="true">00</span>
+          <span class="journal-empty-sticker" data-sticker="sparkles" data-color="#1d3557"
+                data-size="2.6rem" aria-hidden="true"></span>
+          <p>书架还空着，先贴一张「想去」的车票吧。</p>
+          <button class="journal-add-sticker journal-add-inline" type="button"
+                  data-modal-url="/travel/journeys/new" data-modal-title="新增旅程">
+            <span class="journal-add-plus" aria-hidden="true">✚</span> 新增旅程
+          </button>
+        </div>
+      </div>
+    </div>
+    <span class="journal-binding" aria-hidden="true">
+      {% for _ in range(20) %}<i></i>{% endfor %}
+    </span>
+  </section>
   {% endfor %}
 </div>
